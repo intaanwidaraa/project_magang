@@ -3,8 +3,6 @@
 Aplikasi web manajemen inventaris sederhana yang dibangun menggunakan Laravel 12 dan Filament v3.3. Didesain khusus untuk kebutuhan internal bengkel atau dealer dalam mengelola alur masuk dan keluar suku cadang.
 
 
-*(Saran: Ganti bagian ini dengan screenshot dashboard aplikasi Anda yang sudah jadi)*
-
 ---
 
 ## Fitur Utama
