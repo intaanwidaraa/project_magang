@@ -1,61 +1,97 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistem Inventaris Gudang Bengkel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web manajemen inventaris sederhana yang dibangun menggunakan Laravel 12 dan Filament v3.3. Didesain khusus untuk kebutuhan internal bengkel atau dealer dalam mengelola alur masuk dan keluar suku cadang.
 
-## About Laravel
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+*(Saran: Ganti bagian ini dengan screenshot dashboard aplikasi Anda yang sudah jadi)*
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Fitur Utama
 
-## Learning Laravel
+-   **Manajemen Data Master:** CRUD untuk Produk (Barang) dan Pemasok (Supplier).
+-   **Alur Stok Lengkap:** Proses Barang Masuk (Purchase Order) untuk menambah stok dan Barang Keluar (Stock Requisition) untuk penggunaan internal.
+-   **Pelacakan Stok:** Log riwayat pergerakan stok untuk setiap item, memberikan jejak audit yang jelas.
+-   **SKU Otomatis:** Pembuatan SKU (Stock Keeping Unit) unik secara otomatis saat produk baru ditambahkan.
+-   **Notifikasi Stok Minimum:** Peringatan otomatis di dalam aplikasi saat stok produk mencapai batas minimum.
+-   **Sistem User & Hak Akses:** Dua peran user (Administrator & Staf Gudang) dengan hak akses yang berbeda.
+-   **Dashboard Informatif:** Ringkasan visual kondisi inventaris, termasuk item stok kritis dan barang yang paling sering keluar.
+-   **Laporan Terpusat:** Halaman laporan dinamis dengan kemampuan filter (per supplier, per tanggal) dan ekspor data ke Excel.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Teknologi yang Digunakan
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+-   **Backend:** Laravel 12
+-   **Admin Panel:** Filament v3.3
+-   **Database:** MySQL
+-   **Paket Utama:**
+    -   `spatie/laravel-permission` untuk manajemen peran & hak akses.
+    -   `maatwebsite/excel` untuk fungsionalitas ekspor ke Excel.
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Instalasi
 
-### Premium Partners
+Berikut adalah langkah-langkah untuk menjalankan proyek ini di lingkungan lokal Anda.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+1.  **Clone Repositori**
+    ```bash
+    git clone [https://github.com/](https://github.com/)[NAMA_USER_ANDA]/[NAMA_REPO_ANDA].git
+    cd [NAMA_REPO_ANDA]
+    ```
 
-## Contributing
+2.  **Install Dependensi PHP**
+    Jalankan Composer untuk menginstal semua paket yang dibutuhkan.
+    ```bash
+    composer install
+    ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3.  **Siapkan File Environment**
+    Salin file `.env.example` menjadi `.env`.
+    ```bash
+    cp .env.example .env
+    ```
 
-## Code of Conduct
+4.  **Generate Application Key**
+    ```bash
+    php artisan key:generate
+    ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+5.  **Konfigurasi Database**
+    Buka file `.env` dan sesuaikan pengaturan database Anda:
+    ```env
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=bengkel_inventaris
+    DB_USERNAME=root
+    DB_PASSWORD=
+    ```
+    Pastikan Anda sudah membuat database `bengkel_inventaris` di MySQL Anda.
 
-## Security Vulnerabilities
+6.  **Jalankan Migrasi & Seeder**
+    Perintah ini akan membuat semua tabel database dan mengisi data awal (termasuk akun user).
+    ```bash
+    php artisan migrate --seed
+    ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+7.  **Jalankan Development Server**
+    ```bash
+    php artisan serve
+    ```
+    Aplikasi sekarang berjalan di `http://127.0.0.1:8000`.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Akun Default
+
+Setelah proses instalasi selesai, Anda bisa login ke panel admin di `http://127.0.0.1:8000/admin` menggunakan akun berikut:
+
+**1. Administrator**
+-   **Email:** `admin@bengkel.com`
+-   **Password:** `password`
+
+**2. Staf Gudang**
+-   **Email:** `staff@bengkel.com`
+-   **Password:** `password`
