@@ -14,8 +14,9 @@ class UserRoleSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Buat Roles
-        $adminRole = Role::create(['name' => 'Administrator']);
-        $staffRole = Role::create(['name' => 'Staf Gudang']);
+        $adminRole   = Role::firstOrCreate(['name' => 'Administrator']);
+        $staffRole   = Role::firstOrCreate(['name' => 'Staf Gudang']);
+        $managerRole = Role::firstOrCreate(['name' => 'Manajer Gudang']);
 
         // Buat User Administrator
         $admin = User::factory()->create([
@@ -30,5 +31,12 @@ class UserRoleSeeder extends Seeder
             'email' => 'staff@gudang.com',
         ]);
         $staff->assignRole($staffRole);
+
+         // Buat User Manajer Gudang ✅
+        $manager = User::factory()->create([
+            'name' => 'Manajer Gudang',
+            'email' => 'manager@gudang.com',
+        ]);
+        $manager->assignRole($managerRole);
     }
 }
