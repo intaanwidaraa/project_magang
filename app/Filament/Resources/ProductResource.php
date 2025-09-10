@@ -54,6 +54,12 @@ class ProductResource extends Resource
                     ->required()
                     ->maxLength(255)
                     ->default('pcs'),
+                Forms\Components\TextInput::make('price')
+                    ->label('Harga Produk')
+                    ->numeric()
+                    ->required()
+                    ->default(0)
+                    ->prefix('Rp'), 
             ]);
     }
 
@@ -73,9 +79,13 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('minimum_stock')->label('Min. Stok')->sortable(),
                 Tables\Columns\TextColumn::make('unit')
                     ->label('Satuan'),
+                Tables\Columns\TextColumn::make('price')
+                    ->label('Harga')
+                    ->money('IDR', true) 
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Terakhir Update')
-                    ->dateTime()
+                    ->dateTime('d M Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
