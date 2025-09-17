@@ -13,9 +13,10 @@ return new class extends Migration
     {
         Schema::create('stock_requisitions', function (Blueprint $table) {
             $table->id();
-            $table->string('requester_name');
-            $table->string('work_order_number')->nullable();
-            $table->json('items');
+            $table->string('requester_name');       // nama yang ambil barang
+            $table->string('department');           // mekanik / logistik / lainnya
+            $table->json('items');                  // daftar barang (product_id, qty, dll)
+            $table->text('notes')->nullable();      // keterangan tambahan
             $table->string('status')->default('pending');
             $table->timestamps();
         });

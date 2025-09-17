@@ -49,17 +49,22 @@ class ProductResource extends Resource
                     ->required()
                     ->default(5)
                     ->helperText('Sistem akan memberi notifikasi jika stok mencapai angka ini.'),
+                Forms\Components\TextInput::make('lifetime_penggunaan')
+                    ->label('Lifetime Penggunaan')
+                    ->numeric()
+                    ->required()
+                    ->default(0)
+                    ->suffix('hari')
+                    ->helperText('Sistem akan memberi notifikasi jika masa penggunaan produk telah melewati batas ini.'),
+                Forms\Components\DatePicker::make('tanggal_mulai_pemakaian')
+                    ->label('Tanggal Mulai Pemakaian')
+                    ->disabled() // ⬅️ biar admin tidak isi manual
+                    ->helperText('Tanggal otomatis terisi saat barang pertama kali digunakan.'),
                 Forms\Components\TextInput::make('unit')
                     ->label('Satuan')
                     ->required()
                     ->maxLength(255)
-                    ->default('pcs'),
-                Forms\Components\TextInput::make('price')
-                    ->label('Harga Produk')
-                    ->numeric()
-                    ->required()
-                    ->default(0)
-                    ->prefix('Rp'), 
+                    ->default('pcs'), 
             ]);
     }
 
@@ -76,13 +81,15 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stok Saat Ini')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('minimum_stock')->label('Min. Stok')->sortable(),
+                Tables\Columns\TextColumn::make('minimum_stock')
+                    ->label('Min. Stok')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('lifetime_penggunaan')
+                    ->label('Lifetime Penggunaan')
+                    ->sortable()
+                    ->suffix(' hari'),
                 Tables\Columns\TextColumn::make('unit')
                     ->label('Satuan'),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Harga')
-                    ->money('IDR', true) 
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Terakhir Update')
                     ->dateTime('d M Y H:i')

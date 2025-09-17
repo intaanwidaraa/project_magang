@@ -16,6 +16,8 @@ return new class extends Migration
         $table->string('name');
         $table->string('sku')->unique()->nullable();
         $table->integer('stock')->default(0);
+        $table->integer('lifetime_penggunaan')->default(0);
+        $table->date('tanggal_mulai_pemakaian')->nullable();
         $table->string('unit')->default('pcs');
         $table->decimal('price', 12, 2)->default(0);
         $table->timestamps();

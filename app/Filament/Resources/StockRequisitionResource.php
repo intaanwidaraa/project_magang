@@ -14,7 +14,6 @@ use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use App\Models\StockMovement;
 
-
 class StockRequisitionResource extends Resource
 {
     protected static ?string $model = StockRequisition::class;
@@ -31,10 +30,22 @@ class StockRequisitionResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('requester_name')
-                    ->label('Nama Mekanik')
+                    ->label('Nama Pengambil')
                     ->required(),
-                Forms\Components\TextInput::make('work_order_number')
-                    ->label('Nomor Perintah Kerja (Opsional)'),
+
+                Forms\Components\Select::make('department')
+                    ->label('Bagian Pengambil')
+                    ->options([
+                        'mekanik' => 'Mekanik',
+                        'logistik' => 'Logistik',
+                        'lainnya' => 'Lainnya',
+                    ])
+                    ->required(),
+
+                Forms\Components\Textarea::make('notes')
+                    ->label('Keterangan')
+                    ->rows(3),
+
                 Forms\Components\Repeater::make('items')
                     ->label('Daftar Barang')
                     ->schema([
@@ -42,14 +53,27 @@ class StockRequisitionResource extends Resource
                             ->label('Barang')
                             ->options(Product::query()->pluck('name', 'id'))
                             ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $product = Product::find($state);
+                                if ($product) {
+                                    $set('sku', $product->sku);
+                                }
+                            })
                             ->searchable(),
+
+                        Forms\Components\TextInput::make('sku')
+                            ->label('SKU')
+                            ->disabled()
+                            ->dehydrated(),
+
                         Forms\Components\TextInput::make('quantity')
                             ->label('Jumlah')
                             ->numeric()
                             ->required()
                             ->default(1),
                     ])
-                    ->columns(2)
+                    ->columns(3)
                     ->required(),
             ]);
     }
@@ -58,8 +82,9 @@ class StockRequisitionResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('requester_name')->label('Nama Mekanik')->searchable(),
-                Tables\Columns\TextColumn::make('work_order_number')->label('No. Perintah Kerja')->searchable(),
+                Tables\Columns\TextColumn::make('requester_name')->label('Nama Pengambil')->searchable(),
+                Tables\Columns\TextColumn::make('department')->label('Bagian')->sortable(),
+                Tables\Columns\TextColumn::make('notes')->label('Keterangan')->limit(30)->toggleable(),
                 Tables\Columns\TextColumn::make('status')->badge()->color(fn(string $state): string => match ($state) {
                     'pending' => 'warning',
                     'completed' => 'success',
@@ -85,7 +110,16 @@ class StockRequisitionResource extends Resource
                                     Notification::make()->title("Stok {$product->name} tidak cukup!")->danger()->send();
                                     throw new \Exception('Stok tidak cukup.');
                                 }
+
+                                // ⬅️ tambahan: set tanggal_mulai_pemakaian hanya sekali saat pertama kali keluar
+                                if (is_null($product->tanggal_mulai_pemakaian)) {
+                                    $product->update([
+                                        'tanggal_mulai_pemakaian' => now(),
+                                    ]);
+                                }
+
                                 $product->decrement('stock', $item['quantity']);
+
                                 StockMovement::create([
                                     'product_id' => $item['product_id'],
                                     'type' => 'out',
@@ -93,6 +127,7 @@ class StockRequisitionResource extends Resource
                                     'reference_type' => StockRequisition::class,
                                     'reference_id' => $record->id,
                                 ]);
+
                                 if ($product->stock <= $product->minimum_stock) {
                                     Notification::make()
                                         ->title("Stok Kritis: {$product->name}")

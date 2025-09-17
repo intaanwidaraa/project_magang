@@ -23,13 +23,15 @@ class PurchaseOrder extends Model
         'items' => 'array',
     ];
 
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class);
-    }
+    
 
     public function stockMovements(): MorphMany
     {
         return $this->morphMany(StockMovement::class, 'reference');
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }

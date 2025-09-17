@@ -16,6 +16,9 @@ return new class extends Migration
         $table->foreignId('supplier_id')->constrained('suppliers');
         $table->string('po_number')->unique();
         $table->json('items');
+        $table->text('notes')->nullable();
+        $table->enum('payment_method', ['po', 'cash','urgent'])->default('po');
+        $table->decimal('grand_total', 15, 2)->default(0);
         $table->string('status')->default('ordered');
         $table->timestamps();
     });
