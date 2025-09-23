@@ -29,52 +29,81 @@ class StockRequisitionResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('requester_name')
-                    ->label('Nama Pengambil')
-                    ->required(),
+                
+                Forms\Components\Grid::make()->columns(3)->schema([
 
-                Forms\Components\Select::make('department')
-                    ->label('Bagian Pengambil')
-                    ->options([
-                        'mekanik' => 'Mekanik',
-                        'logistik' => 'Logistik',
-                        'lainnya' => 'Lainnya',
-                    ])
-                    ->required(),
+                    Forms\Components\Group::make()->schema([
+                        Forms\Components\Section::make('Informasi Pengambilan')
+                            ->schema([
+                                Forms\Components\TextInput::make('requester_name')
+                                    ->label('Nama Pengambil')
+                                    ->required(),
+                                Forms\Components\Select::make('department')
+                                    ->label('Bagian Pengambil')
+                                    ->options([
+                                        'mekanik' => 'Mekanik',
+                                        'logistik' => 'Logistik',
+                                        'lainnya' => 'Lainnya',
+                                    ])
+                                    ->required(),
+                            ])->columns(2), // Layout 2 kolom di dalam section ini
 
-                Forms\Components\Textarea::make('notes')
-                    ->label('Keterangan')
-                    ->rows(3),
+                        Forms\Components\Section::make('Daftar Barang')
+                            ->schema([
+                                Forms\Components\Repeater::make('items')
+                                    ->label(false) // Label utama Repeater dihilangkan karena sudah ada di Section
+                                    ->schema([
+                                        Forms\Components\Select::make('product_id')
+                                            ->label('Barang')
+                                            ->options(Product::query()->pluck('name', 'id'))
+                                            ->required()
+                                            ->reactive()
+                                            ->afterStateUpdated(function ($state, callable $set) {
+                                                $product = Product::find($state);
+                                                if ($product) {
+                                                    $set('sku', $product->sku);
+                                                }
+                                            })
+                                            ->searchable()
+                                            ->columnSpan([
+                                                'md' => 4, // Lebar di layar medium/besar
+                                            ]),
 
-                Forms\Components\Repeater::make('items')
-                    ->label('Daftar Barang')
-                    ->schema([
-                        Forms\Components\Select::make('product_id')
-                            ->label('Barang')
-                            ->options(Product::query()->pluck('name', 'id'))
-                            ->required()
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, callable $set) {
-                                $product = Product::find($state);
-                                if ($product) {
-                                    $set('sku', $product->sku);
-                                }
-                            })
-                            ->searchable(),
+                                        Forms\Components\TextInput::make('sku')
+                                            ->label('SKU')
+                                            ->disabled()
+                                            ->dehydrated()
+                                            ->columnSpan([
+                                                'md' => 2,
+                                            ]),
 
-                        Forms\Components\TextInput::make('sku')
-                            ->label('SKU')
-                            ->disabled()
-                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('quantity')
+                                            ->label('Jumlah')
+                                            ->numeric()
+                                            ->required()
+                                            ->default(1)
+                                            ->columnSpan([
+                                                'md' => 2,
+                                            ]),
+                                    ])
+                                    ->columns([ 
+                                        'md' => 8,
+                                    ])
+                                    ->required(),
+                            ]),
+                    ])->columnSpan(2), 
 
-                        Forms\Components\TextInput::make('quantity')
-                            ->label('Jumlah')
-                            ->numeric()
-                            ->required()
-                            ->default(1),
-                    ])
-                    ->columns(3)
-                    ->required(),
+                    // [3] Grup kolom kanan (lebih sempit) untuk keterangan
+                    Forms\Components\Group::make()->schema([
+                        Forms\Components\Section::make('Keterangan')
+                            ->schema([
+                                Forms\Components\Textarea::make('notes')
+                                    ->label(false) 
+                                    ->placeholder('Catatan tambahan (opsional)...')
+                                    ->rows(8),
+                            ]),
+                    ])->columnSpan(1), // Grup kanan menggunakan 1/3 lebar
+                ]),
             ]);
     }
 
@@ -111,7 +140,7 @@ class StockRequisitionResource extends Resource
                                     throw new \Exception('Stok tidak cukup.');
                                 }
 
-                                // ⬅️ tambahan: set tanggal_mulai_pemakaian hanya sekali saat pertama kali keluar
+                                
                                 if (is_null($product->tanggal_mulai_pemakaian)) {
                                     $product->update([
                                         'tanggal_mulai_pemakaian' => now(),

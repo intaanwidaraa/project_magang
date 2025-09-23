@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification; 
 use Illuminate\Support\Number; 
 use Carbon\Carbon;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
+use Barryvdh\DomPDF\Facade\Pdf; // [1] Import class PDF
+use Symfony\Component\HttpFoundation\StreamedResponse; // [2] Import class StreamedResponse
 
 class PurchaseOrderResource extends Resource
 {
@@ -35,8 +40,6 @@ class PurchaseOrderResource extends Resource
             ->schema([
                 // Membuat layout grid utama dengan 3 kolom
                 Forms\Components\Grid::make()->columns(3)->schema([
-
-                    // ===== AREA UTAMA (KIRI) - Memakai 2 dari 3 kolom =====
                     Forms\Components\Group::make()->schema([
                         Forms\Components\Section::make('Informasi Pesanan')
                             ->schema([
@@ -51,10 +54,14 @@ class PurchaseOrderResource extends Resource
                                     ->preload()
                                     ->createOptionForm([
                                         Forms\Components\TextInput::make('name')->required(),
-                                        Forms\Components\TextInput::make('phone_number'),
+                                        Forms\Components\TextInput::make('phone_number')->required(),
+                                        Forms\Components\TextInput::make('address')->required(),
                                     ])
                                     ->reactive()
-                                    ->afterStateUpdated(fn (callable $set) => $set('products', []))
+                                    ->afterStateUpdated(function (callable $set) {
+                                        $set('products', []);
+                                        $set('items', []);
+                                    })
                                     ->required(),
                             ])->columns(2),
 
@@ -112,8 +119,77 @@ class PurchaseOrderResource extends Resource
                                         ->color('success')
                                         ->icon('heroicon-o-plus-circle')
                                         ->visible(fn (callable $get) => filled($get('supplier_id')))
-                                        // ... (sisa form action tidak perlu diubah)
+                                        ->form([
+                                            Forms\Components\Select::make('product_id')
+                                                ->label('Pilih dari Master Produk')
+                                                ->options(Product::query()->pluck('name', 'id'))
+                                                ->searchable()
+                                                ->required()
+                                                ->reactive()
+                                                ->createOptionForm([
+                                                    Forms\Components\TextInput::make('name')
+                                                        ->label('Nama Produk')
+                                                        ->required(),
+                                                    Forms\Components\TextInput::make('sku')
+                                                        ->label('SKU (Kode Unik)')
+                                                        ->readOnly()
+                                                        ->placeholder('Akan dibuat otomatis setelah disimpan'),
+                                                    Forms\Components\TextInput::make('unit')->label('Satuan (pcs, box, dll)')->default('pcs')->required(),
+                                                    // ===== TAMBAHKAN FIELD INI =====
+                                                    Forms\Components\TextInput::make('lifetime_penggunaan')
+                                                        ->label('Lifetime Penggunaan')
+                                                        ->numeric()
+                                                        ->required()
+                                                        ->default(0)
+                                                        ->suffix('hari')
+                                                        ->helperText('Masa ideal penggunaan produk dalam hari.'),
+                                                    // ===== AKHIR PENAMBAHAN =====
+                                                    Forms\Components\TextInput::make('minimum_stock')->label('Stok Minimum')->numeric()->default(0),
+                                                ])
+                                                // ===== TAMBAHKAN BAGIAN INI =====
+                                                ->createOptionUsing(function (array $data): int {
+                                                    $newProduct = Product::create($data);
+                                                    // Ingat: Model Product Anda akan otomatis membuat SKU saat event 'creating'
+                                                    return $newProduct->id;
+                                                })
+                                                // ===== AKHIR PENAMBAHAN =====
+                                                ->afterStateUpdated(function ($state, callable $set) {
+                                                    $product = Product::find($state);
+                                                    if($product) {
+                                                        $set('nama_item', $product->name);
+                                                    }
+                                                }),
+                                            Forms\Components\TextInput::make('nama_item')
+                                                ->label('Nama Item (versi supplier)')
+                                                ->helperText('Nama produk ini yang akan muncul di daftar pilihan.')
+                                                ->required(),
+                                            Forms\Components\TextInput::make('harga')
+                                                ->label('Harga dari Supplier')
+                                                ->numeric()
+                                                ->prefix('Rp')
+                                                ->required(),
+                                        ])
+                                        ->action(function (array $data, callable $get, callable $set) {
+                                            $supplierId = $get('supplier_id');
+                                            
+                                            $newSupplierItem = SupplierItem::create([
+                                                'supplier_id' => $supplierId,
+                                                'product_id' => $data['product_id'],
+                                                'nama_item' => $data['nama_item'],
+                                                'harga' => $data['harga'],
+                                            ]);
+
+                                            $currentSelectedProducts = $get('products');
+                                            $currentSelectedProducts[] = $newSupplierItem->id;
+                                            $set('products', $currentSelectedProducts);
+
+                                            Notification::make()
+                                                ->title('Produk baru berhasil ditambahkan ke supplier')
+                                                ->success()
+                                                ->send();
+                                        })
                                 ])->alignEnd(),
+
 
                                 Forms\Components\Repeater::make('items')
                                     ->label('Rincian Pesanan')
@@ -131,13 +207,15 @@ class PurchaseOrderResource extends Resource
                                                 $grandTotal = collect($allItems)->sum(fn($item) => $item['total'] ?? 0);
                                                 $set('../../grand_total', $grandTotal);
                                             }),
-                                         Forms\Components\Placeholder::make('unit')
+                                         Forms\Components\TextInput::make('unit')
                                             ->label('Satuan')
-                                            ->content(fn ($get) => $get('unit')), // Ambil nilai 'unit'
-                                        Forms\Components\TextInput::make('price')->label('Harga/Satuan')->numeric()->prefix('Rp')->disabled()->dehydrated(),
+                                            ->disabled()
+                                            ->dehydrated(),
+                                             // Ambil nilai 'unit'
+                                        Forms\Components\TextInput::make('price')->label('Harga per Item')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                         Forms\Components\TextInput::make('total')->label('Total')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                     ])
-                                    ->columns(4)
+                                    ->columns(5)
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         $grandTotal = collect($state)->sum(fn($item) => $item['total'] ?? 0);
@@ -189,7 +267,6 @@ class PurchaseOrderResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('po_number')->label('Nomor PO')->searchable(),
                 Tables\Columns\TextColumn::make('supplier.name')->label('Pemasok')->searchable(),
-                
                 Tables\Columns\TextColumn::make('items')
                     ->label('Item Produk')
                     ->listWithLineBreaks() // Menampilkan setiap item di baris baru
@@ -217,11 +294,13 @@ class PurchaseOrderResource extends Resource
                             $id = $item['supplier_item_id'];
                             $quantity = $item['quantity'] ?? 0;
                             
-                            // Cari nama produk dari data yang sudah diambil
+                            // [1] Ambil data 'unit' dari array item, dengan 'pcs' sebagai fallback
+                            $unit = $item['unit'] ?? 'pcs'; 
+
                             $name = $supplierItems->get($id)?->nama_item ?? 'Produk tidak ditemukan';
                             
-                            // Gabungkan nama dan jumlah
-                            return "{$name} ({$quantity} pcs)";
+                            // [2] Gunakan variabel $unit di sini, bukan 'pcs' yang di-hardcode
+                            return "{$name} ({$quantity} {$unit})";
                         })->all();
                     }),
                 
@@ -259,39 +338,42 @@ class PurchaseOrderResource extends Resource
                         default => 'gray'
                     }),
                 
-                Tables\Columns\TextColumn::make('hari_berjalan') 
-                    ->label('Hari Berjalan')
+                // ===== AWAL PERUBAHAN =====
+                Tables\Columns\TextColumn::make('duration') // [1] Ganti nama teknis kolom
+                    ->label('Durasi') // [2] Ganti label header tabel
                     ->badge()
                     ->state(function (PurchaseOrder $record): int {
-                        // Hitung hari yang sudah berlalu sejak PO dibuat
-                        // +1 agar hitungan dimulai dari hari ke-1
+                        // [3] Logika perhitungan durasi
+                        if ($record->status === 'completed') {
+                            // Jika SUDAH diterima, hitung selisih dari tanggal dibuat sampai tanggal diupdate (diterima)
+                            return $record->created_at->startOfDay()->diffInDays($record->updated_at->startOfDay()) + 1;
+                        }
+                        // Jika MASIH dipesan, hitung selisih dari tanggal dibuat sampai hari ini
                         return $record->created_at->startOfDay()->diffInDays(now()->startOfDay()) + 1;
                     })
-                    ->formatStateUsing(function ($state, PurchaseOrder $record): string {
+                    ->formatStateUsing(function (int $state, PurchaseOrder $record): string {
+                        // [4] Logika format teks yang ditampilkan
                         if ($record->status === 'completed') {
-                            return 'Diterima';
+                            return "Tiba dalam {$state} hari";
                         }
 
-                        // Jika lebih dari 14 hari, tampilkan status terlambat
-                        if ($state > 14) {
+                        if ($state > 14) { // Estimasi kedatangan 14 hari
                             return 'Terlambat (' . ($state - 14) . ' hari)';
                         }
                         
-                        // Jika masih dalam periode tunggu, tampilkan hari ke berapa
                         return "Hari ke-{$state}";
                     })
-                    ->color(function ($state, PurchaseOrder $record): string {
+                    ->color(function (int $state, PurchaseOrder $record): string {
+                        // [5] Logika pewarnaan badge
                         if ($record->status === 'completed') {
-                            return 'success';
+                            return 'success'; // Warna hijau jika sudah tiba
                         }
                         
-                        // Beri warna merah jika sudah lewat 14 hari
                         if ($state > 14) {
-                            return 'danger';
+                            return 'danger'; // Warna merah jika terlambat
                         }
 
-                        // Beri warna biru (info) jika masih dalam proses
-                        return 'info';
+                        return 'info'; // Warna biru jika masih dalam proses
                     }),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -299,8 +381,30 @@ class PurchaseOrderResource extends Resource
                     ->date('d M Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                    //di delete after this
+                    //->label('Tanggal PO')
             ])
-            ->filters([])
+            ->filters([
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('created_from')
+                            ->label('Dari tanggal'),
+                        DatePicker::make('created_until')
+                            ->label('Sampai tanggal'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    
+            ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
@@ -347,6 +451,30 @@ class PurchaseOrderResource extends Resource
             ->send();
     })
     ->visible(fn(PurchaseOrder $record): bool => $record->status === 'ordered'),
+
+    // ===== [3] AWAL PENAMBAHAN AKSI CETAK PDF =====
+                Tables\Actions\Action::make('printInvoice')
+                    ->label('Cetak Invoice')
+                    ->icon('heroicon-o-printer')
+                    ->color('info')
+                    ->action(function (PurchaseOrder $record): StreamedResponse {
+                        // Memuat view blade untuk invoice dan mengirim data record
+                        $pdf = PDF::loadView('invoices.purchase_order', compact('record'));
+                        
+                        // Mengirimkan file PDF sebagai download langsung ke browser
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->output();
+                        }, 'invoice-' . $record->po_number . '.pdf');
+                    })
+                    // Tombol ini hanya akan terlihat jika status PO sudah 'completed'
+                    ->visible(fn (PurchaseOrder $record): bool => $record->status === 'completed'),
+                // ===== AKHIR PENAMBAHAN AKSI CETAK PDF =====
+
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 
