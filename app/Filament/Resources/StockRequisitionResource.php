@@ -44,14 +44,15 @@ class StockRequisitionResource extends Resource
                                         'mekanik' => 'Mekanik',
                                         'logistik' => 'Logistik',
                                         'lainnya' => 'Lainnya',
+
                                     ])
                                     ->required(),
-                            ])->columns(2), // Layout 2 kolom di dalam section ini
+                            ])->columns(2), 
 
                         Forms\Components\Section::make('Daftar Barang')
                             ->schema([
                                 Forms\Components\Repeater::make('items')
-                                    ->label(false) // Label utama Repeater dihilangkan karena sudah ada di Section
+                                    ->label(false) 
                                     ->schema([
                                         Forms\Components\Select::make('product_id')
                                             ->label('Barang')
@@ -66,7 +67,7 @@ class StockRequisitionResource extends Resource
                                             })
                                             ->searchable()
                                             ->columnSpan([
-                                                'md' => 4, // Lebar di layar medium/besar
+                                                'md' => 4, 
                                             ]),
 
                                         Forms\Components\TextInput::make('sku')
@@ -93,7 +94,6 @@ class StockRequisitionResource extends Resource
                             ]),
                     ])->columnSpan(2), 
 
-                    // [3] Grup kolom kanan (lebih sempit) untuk keterangan
                     Forms\Components\Group::make()->schema([
                         Forms\Components\Section::make('Keterangan')
                             ->schema([
@@ -102,7 +102,7 @@ class StockRequisitionResource extends Resource
                                     ->placeholder('Catatan tambahan (opsional)...')
                                     ->rows(8),
                             ]),
-                    ])->columnSpan(1), // Grup kanan menggunakan 1/3 lebar
+                    ])->columnSpan(1), 
                 ]),
             ]);
     }

@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SupplierResource\Pages;
 use App\Models\Supplier;
-use App\Models\Product; // <-- TAMBAHKAN USE INI
+use App\Models\Product; 
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -38,50 +38,43 @@ class SupplierResource extends Resource
                     ->label('Alamat')
                     ->columnSpanFull(),
 
-                // --- MULAI PERUBAHAN PENTING ---
                 Forms\Components\Repeater::make('items')
                     ->label('Barang yang Dipasok')
                     ->relationship()
                     ->schema([
-                        // 1. Pilih Produk dari Master Data
                         Forms\Components\Select::make('product_id')
                             ->label('Pilih Produk dari Gudang')
                             ->options(Product::all()->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
-                            ->reactive() // Membuat field ini reaktif
+                            ->reactive() 
                             ->required()
                             ->afterStateUpdated(function ($state, callable $set) {
-                                // Jika produk dipilih, isi otomatis nama & harga
+    
                                 $product = Product::find($state);
                                 if ($product) {
                                     $set('nama_item', $product->name);
-                                    // Anda bisa isi harga default dari master produk jika ada
-                                    // $set('harga', $product->price); 
+
                                 }
                             }),
-                        
-                        // 2. Nama Item (bisa diedit jika nama dari supplier beda)
+
                         Forms\Components\TextInput::make('nama_item')
                             ->label('Nama Item (Versi Supplier)')
                             ->helperText('Otomatis terisi, namun bisa diubah jika perlu.')
                             ->required(),
 
-                        // 3. Harga dari Supplier
                         Forms\Components\TextInput::make('harga')
                             ->label('Harga Beli')
                             ->numeric()
                             ->prefix('Rp')
                             ->required(),
                     ])
-                    ->columns(3) // Mengatur layout jadi 3 kolom
+                    ->columns(3) 
                     ->columnSpanFull()
                     ->addActionLabel('Tambah Barang Pemasok'),
-                // --- SELESAI PERUBAHAN PENTING ---
             ]);
     }
 
-    // Bagian `table()`, `getRelations()`, dan `getPages()` tidak perlu diubah
     public static function table(Table $table): Table
     {
         return $table
@@ -98,10 +91,9 @@ class SupplierResource extends Resource
                     ->counts('items')
                     ->label('Jumlah Barang'),
                 
-                // ... sisa kolom ...
             ])
             ->filters([
-                //
+                
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -117,7 +109,7 @@ class SupplierResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            
         ];
     }
 

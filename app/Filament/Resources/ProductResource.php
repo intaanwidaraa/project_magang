@@ -34,8 +34,8 @@ class ProductResource extends Resource
                 Forms\Components\TextInput::make('sku')
                     ->label('SKU (Kode Barang)')
                     ->unique(ignoreRecord: true)
-                    ->readOnly() // <-- Buat jadi tidak bisa diisi
-                    ->placeholder('Akan dibuat otomatis setelah disimpan') // <-- Tampilkan placeholder
+                    ->readOnly() 
+                    ->placeholder('Akan dibuat otomatis setelah disimpan') 
                     ->maxLength(255),
                 Forms\Components\TextInput::make('stock')
                     ->label('Stok Saat Ini')
@@ -57,7 +57,7 @@ class ProductResource extends Resource
                     ->helperText('Sistem akan memberi notifikasi jika masa penggunaan produk telah melewati batas ini.'),
                 Forms\Components\DatePicker::make('tanggal_mulai_pemakaian')
                     ->label('Tanggal Mulai Pemakaian')
-                    ->disabled() // ⬅️ biar admin tidak isi manual
+                    ->disabled() 
                     ->helperText('Tanggal otomatis terisi saat barang pertama kali digunakan.'),
                 Forms\Components\TextInput::make('unit')
                     ->label('Satuan')

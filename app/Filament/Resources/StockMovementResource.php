@@ -52,13 +52,13 @@ class StockMovementResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                //
+                
             ])
             ->actions([
-                // Tidak ada tombol aksi
+               
             ])
             ->bulkActions([
-                // Tidak ada bulk action
+
             ]);
     }
 

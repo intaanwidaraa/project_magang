@@ -53,6 +53,8 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             'filterPeriode' => 'harian',
             'tanggal' => now()->format('Y-m-d'),
             'product_id' => null,
+            'tanggal_mulai' => now()->startOfMonth()->format('Y-m-d'),
+            'tanggal_akhir' => now()->endOfMonth()->format('Y-m-d'),
         ]);
     }
 
@@ -82,25 +84,37 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                         Select::make('filterPeriode')
                             ->label('Filter Berdasarkan')
                             ->options([
+                                // [1] PENAMBAHAN OPSI BARU
+                                'rentang_tanggal' => 'Rentang Tanggal',
                                 'harian' => 'Harian',
                                 'bulanan' => 'Bulanan',
                                 'tahunan' => 'Tahunan',
                             ])
                             ->default('harian')
+                            ->live() 
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'barang_masuk')
                             ->columnSpan(3),
 
+                        // [2] UBAH LOGIKA VISIBILITY DATEPICKER TUNGGAL
                         DatePicker::make('tanggal')
                             ->label('Pilih Tanggal')
                             ->default(now())
+                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'stok' || ($get('jenisLaporan') === 'barang_masuk' && in_array($get('filterPeriode'), ['harian', 'bulanan', 'tahunan'])))
                             ->columnSpan(3),
                         
+                        // [3] TAMBAHKAN GRID UNTUK RENTANG TANGGAL
+                        Grid::make(2)
+                            ->schema([
+                                DatePicker::make('tanggal_mulai')
+                                    ->label('Dari Tanggal'),
+                                DatePicker::make('tanggal_akhir')
+                                    ->label('Sampai Tanggal'),
+                            ])
+                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'barang_masuk' && $get('filterPeriode') === 'rentang_tanggal')
+                            ->columnSpan(6),
+
                         Group::make()->schema([
                             FormActions::make([
-                                FormAction::make('tampilkan')
-                                    ->label('Tampilkan')
-                                    ->action('tampilkan'),
-                                
                                 FormAction::make('export')
                                     ->label('Ekspor ke Excel')
                                     ->button()
@@ -121,10 +135,10 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                                     return "• {$name} ({$quantity} {$unit})";
                                                 })->join(PHP_EOL);
                                                 return [
-                                                    'tanggal'      => $po->created_at->format('d-m-Y'),
-                                                    'pemasok'      => $po->supplier->name,
-                                                    'produk'       => $itemsList,
-                                                    'total_harga'  => $po->grand_total,
+                                                    'tanggal'     => $po->created_at->format('d-m-Y'),
+                                                    'pemasok'     => $po->supplier->name,
+                                                    'produk'      => $itemsList,
+                                                    'total_harga' => $po->grand_total,
                                                 ];
                                             });
                                             return Excel::download(new PurchaseOrdersExport($data), 'laporan-barang-masuk.xlsx');
@@ -143,13 +157,18 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                         
                                         $pdf = Pdf::loadView($viewName, compact('records', 'data'));
                                         
-                                        return response()->streamDownload(fn() => print($pdf->output()), 'laporan-' . $jenisLaporan . '-' . $data['tanggal'] . '.pdf');
+                                        return response()->streamDownload(fn() => print($pdf->output()), 'laporan-' . $jenisLaporan . '.pdf');
                                     }),
+
+                                FormAction::make('tampilkan')
+                                    ->label('Tampilkan')
+                                    ->action('tampilkan'),
+
                             ])->alignEnd()
                         ])->columnSpan(12),
 
-                ])
-                ->extraAttributes(['class' => 'items-end gap-x-4']),
+                    ])
+                    ->extraAttributes(['class' => 'items-end gap-x-4']),
             ])
             ->statePath('data');
     }
@@ -172,27 +191,43 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
         $query = match ($jenisLaporan) {
             'stok' => Product::query(),
             'barang_masuk' => PurchaseOrder::query()
-                                ->where('status', 'completed') // <-- PERUBAHAN DI SINI
+                                ->where('status', 'completed')
                                 ->with('supplier'),
             default => Product::query(),
         };
 
-        $tanggal = $this->data['tanggal'] ?? now()->format('Y-m-d');
-        $tanggalCarbon = Carbon::parse($tanggal);
-
         if ($jenisLaporan === 'stok') {
+            $tanggal = $this->data['tanggal'] ?? now()->format('Y-m-d');
+            $tanggalCarbon = Carbon::parse($tanggal);
             $productId = $this->data['product_id'] ?? null;
             $query->when($productId, fn($q) => $q->where('id', $productId));
             $query->with(['stockMovements' => function ($q) use ($tanggalCarbon) {
                 $q->whereDate('created_at', $tanggalCarbon);
             }]);
-        } else {
+        } else { 
             $filterPeriode = $this->data['filterPeriode'] ?? 'harian';
             $kolomTanggal = 'created_at';
+            
             switch ($filterPeriode) {
-                case 'bulanan': $query->whereMonth($kolomTanggal, $tanggalCarbon->month)->whereYear($kolomTanggal, $tanggalCarbon->year); break;
-                case 'tahunan': $query->whereYear($kolomTanggal, $tanggalCarbon->year); break;
-                default: $query->whereDate($kolomTanggal, $tanggalCarbon); break;
+                // [4] TAMBAHKAN LOGIKA UNTUK RENTANG TANGGAL
+                case 'rentang_tanggal':
+                    $tanggalMulai = $this->data['tanggal_mulai'] ?? null;
+                    $tanggalAkhir = $this->data['tanggal_akhir'] ?? null;
+                    $query->when($tanggalMulai, fn(Builder $q, $date) => $q->whereDate($kolomTanggal, '>=', $date))
+                          ->when($tanggalAkhir, fn(Builder $q, $date) => $q->whereDate($kolomTanggal, '<=', $date));
+                    break;
+                case 'bulanan':
+                    $tanggalCarbon = Carbon::parse($this->data['tanggal'] ?? now());
+                    $query->whereMonth($kolomTanggal, $tanggalCarbon->month)->whereYear($kolomTanggal, $tanggalCarbon->year);
+                    break;
+                case 'tahunan':
+                    $tanggalCarbon = Carbon::parse($this->data['tanggal'] ?? now());
+                    $query->whereYear($kolomTanggal, $tanggalCarbon->year);
+                    break;
+                default: // Harian
+                    $tanggalCarbon = Carbon::parse($this->data['tanggal'] ?? now());
+                    $query->whereDate($kolomTanggal, $tanggalCarbon);
+                    break;
             }
         }
         return $query;
@@ -243,13 +278,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                     ->label('Total Harga')
                     ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
                     ->prefix('Rp ')
-                    ->alignEnd(),
-                
-                    // [2] Tambahkan Summarizer pada kolom grand_total
-                TextColumn::make('grand_total')
-                    ->label('Total Harga')
-                    ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
-                    ->prefix('Rp ')
                     ->alignEnd()
                     ->summarize(Sum::make()
                         ->label('Total Keseluruhan')
@@ -259,8 +287,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             default => [],
         };
     }
-
-     
 
     protected function getTableFilters(): array
     {

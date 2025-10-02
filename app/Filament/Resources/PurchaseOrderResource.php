@@ -39,7 +39,6 @@ class PurchaseOrderResource extends Resource
     {
         return $form
             ->schema([
-                // Membuat layout grid utama dengan 3 kolom
                 Forms\Components\Grid::make()->columns(3)->schema([
                     Forms\Components\Group::make()->schema([
                         Forms\Components\Section::make('Informasi Pesanan')
@@ -87,7 +86,6 @@ class PurchaseOrderResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                         $oldItems = collect($get('items') ?? []);
 
-                                        // Ambil semua data SupplierItem beserta relasi product-nya dalam satu query
                                         $selectedSupplierItems = SupplierItem::with('product')->whereIn('id', $state)->get()->keyBy('id');
 
                                         $newItems = collect($state)->map(function ($id) use ($oldItems, $selectedSupplierItems) { // <-- Variabel ditambahkan di sini
@@ -95,7 +93,7 @@ class PurchaseOrderResource extends Resource
                                             $supplierItem = $selectedSupplierItems->get($id);
 
                                             if (!$supplierItem) {
-                                                return null; // Lewati jika item tidak ditemukan
+                                                return null; 
                                             }
 
                                             return [
@@ -103,7 +101,6 @@ class PurchaseOrderResource extends Resource
                                                 'product_id'       => $supplierItem->product_id,
                                                 'quantity'         => $existing['quantity'] ?? 1,
                                                 'price'            => $supplierItem->harga ?? 0,
-                                                // Mengambil 'unit' dari relasi product yang sudah di-load
                                                 'unit'             => $supplierItem->product?->unit ?? 'pcs',
                                                 'total'            => ($existing['quantity'] ?? 1) * ($supplierItem->harga ?? 0),
                                             ];
@@ -305,7 +302,6 @@ class PurchaseOrderResource extends Resource
                         })->all();
                     }),
 
-                // [UBAH BAGIAN INI] Tambahkan ->summarize() di bawah
                 Tables\Columns\TextColumn::make('grand_total')
                     ->label('Total Pesanan')
                     ->numeric(

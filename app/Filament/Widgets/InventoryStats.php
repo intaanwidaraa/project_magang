@@ -11,10 +11,8 @@ class InventoryStats extends BaseWidget
 {
     protected function getStats(): array
     {
-        // Hitung jumlah produk stok kritis
         $lowStockCount = Product::whereColumn('stock', '<=', 'minimum_stock')->count();
 
-        // Hitung produk dengan lifetime hampir habis (contoh: lifetime_penggunaan <= 30 hari)
         $expiringLifetimeCount = Product::where('lifetime_penggunaan', '<=', 30)->count();
 
         return [

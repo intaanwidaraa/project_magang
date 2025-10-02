@@ -10,7 +10,7 @@ use Filament\Widgets\TableWidget as BaseWidget;
 
 class ProductAlerts extends BaseWidget
 {
-    protected static ?int $sort = 1; // Biar tampil paling atas di dashboard
+    protected static ?int $sort = 1; 
     protected int | string | array $columnSpan = 'full';
 
     public function table(Table $table): Table
@@ -22,9 +22,7 @@ class ProductAlerts extends BaseWidget
                         $today = Carbon::today();
 
                         $query
-                            // kondisi stok kritis
                             ->whereColumn('stock', '<=', 'minimum_stock')
-                            // kondisi lifetime hampir habis (H-7)
                             ->orWhereRaw("
                                 DATE_ADD(tanggal_mulai_pemakaian, INTERVAL lifetime_penggunaan DAY) <= DATE_ADD(?, INTERVAL 7 DAY)
                             ", [$today]);
@@ -50,7 +48,6 @@ class ProductAlerts extends BaseWidget
                         $expiredAt = Carbon::parse($record->tanggal_mulai_pemakaian)
                             ->addDays($record->lifetime_penggunaan);
 
-                        // ✅ pakai Carbon::today() biar bulat, tanpa pecahan
                         return Carbon::today()->diffInDays($expiredAt, false);
                     })
                     ->suffix(' hari')

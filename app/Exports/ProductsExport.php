@@ -13,7 +13,6 @@ class ProductsExport implements FromCollection, WithHeadings
      */
     public function collection()
     {
-        // Mengambil data yang ingin diekspor
         return Product::select('name', 'sku', 'stock', 'minimum_stock', 'unit')->get();
     }
 
@@ -22,7 +21,6 @@ class ProductsExport implements FromCollection, WithHeadings
      */
     public function headings(): array
     {
-        // Mendefinisikan judul kolom di file Excel
         return [
             'Nama Produk',
             'SKU',

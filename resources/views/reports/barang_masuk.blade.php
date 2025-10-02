@@ -6,13 +6,12 @@
     <style>
         body {
             font-family: 'Helvetica', sans-serif;
-            font-size: 11px;
+            font-size: 9px; /* Ukuran font dikecilkan lagi agar muat */
             color: #333;
-            background-color: #fff;
-            margin: 0;
         }
         .container {
-            width: 100%;
+            /* [PERUBAHAN] Ganti width menjadi max-width agar margin auto berfungsi */
+            max-width: 900px; 
             margin: 0 auto;
             padding: 20px;
         }
@@ -22,12 +21,8 @@
             padding-bottom: 10px;
             margin-bottom: 10px;
         }
-        .header-table td {
-            vertical-align: middle;
-        }
-        .header-info {
-            text-align: center;
-        }
+        .header-table td { vertical-align: middle; }
+        .header-info { text-align: center; }
         .header-info h1 { margin: 0; font-size: 20px; }
         .header-info p { margin: 2px 0; font-size: 11px; }
         .report-title h2 {
@@ -47,19 +42,17 @@
             margin-top: 20px;
         }
         .items-table th, .items-table td {
-            padding: 8px;
+            padding: 5px; /* Padding dikecilkan */
             border: 1px solid #ccc;
             text-align: left;
-            vertical-align: top;
+            vertical-align: middle;
+            word-wrap: break-word;
         }
         .items-table thead th {
             background-color: #4A5568;
             color: white;
             font-weight: bold;
             text-align: center;
-        }
-        .items-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
         }
         .items-table tfoot td {
             font-weight: bold;
@@ -75,23 +68,30 @@
         }
         .signature-table p { margin: 0; line-height: 1.5; }
         .signature-space { height: 60px; }
-        ul { margin: 0; padding-left: 15px; list-style-type: none; }
-        li { margin-bottom: 3px; }
     </style>
 </head>
 <body>
     @php
         $logoPath = public_path('images/Logo_MAS.png');
-        $tanggal = \Carbon\Carbon::parse($data['tanggal']);
         $periodeTeks = '';
+
+        // [PERBAIKAN] Logika untuk menentukan teks periode berdasarkan filter yang dipilih
         switch ($data['filterPeriode']) {
+            case 'rentang_tanggal':
+                $mulai = isset($data['tanggal_mulai']) ? \Carbon\Carbon::parse($data['tanggal_mulai'])->translatedFormat('d F Y') : 'N/A';
+                $akhir = isset($data['tanggal_akhir']) ? \Carbon\Carbon::parse($data['tanggal_akhir'])->translatedFormat('d F Y') : 'N/A';
+                $periodeTeks = "{$mulai} s/d {$akhir}";
+                break;
             case 'bulanan':
+                $tanggal = \Carbon\Carbon::parse($data['tanggal']);
                 $periodeTeks = 'Bulan ' . $tanggal->translatedFormat('F Y');
                 break;
             case 'tahunan':
+                $tanggal = \Carbon\Carbon::parse($data['tanggal']);
                 $periodeTeks = 'Tahun ' . $tanggal->translatedFormat('Y');
                 break;
-            default: // harian
+            default: // 'harian'
+                $tanggal = \Carbon\Carbon::parse($data['tanggal']);
                 $periodeTeks = 'Tanggal ' . $tanggal->translatedFormat('d F Y');
                 break;
         }
@@ -99,7 +99,7 @@
 
     <div class="container">
         <table class="header-table">
-            <tr>
+             <tr>
                 <td style="width: 20%;">
                     @if(file_exists($logoPath))
                         <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" style="max-width: 100px;">
@@ -115,61 +115,71 @@
         </table>
         
         <div class="report-title">
-            <h2>Laporan Barang Masuk (PO)</h2>
+            <h2>Laporan Barang Masuk</h2>
             <p>Periode: {{ $periodeTeks }}</p>
         </div>
 
         <table class="items-table">
+            {{-- [PERUBAHAN] Header tabel diubah sesuai permintaan --}}
             <thead>
                 <tr>
-                    <th style="width: 5%;">No</th>
-                    <th style="width: 10%;">Tanggal</th>
-                    <th>Pemasok</th>
-                    <th>Jenis Produk</th>
-                    <th class="text-center">Jumlah</th>
-                    <th class="text-right">Harga Satuan</th>
-                    <th class="text-right">Total Harga</th>
+                    <th rowspan="2" style="width: 3%; vertical-align: middle;">No</th>
+                    <th rowspan="2" style="vertical-align: middle;">Nama Barang</th>
+                    <th rowspan="2" style="width: 4%; vertical-align: middle;">Qty</th>
+                    <th rowspan="2" style="width: 6%; vertical-align: middle;">Satuan</th>
+                    <th colspan="2" style="width: 20%;">Estimasi Harga</th>
+                    <th rowspan="2" style="width: 12%; vertical-align: middle;">Keterangan</th>
+                    <th rowspan="2" style="width: 7%; vertical-align: middle;">Pembayaran</th>
+                    <th rowspan="2" style="vertical-align: middle;">Supplier</th>
+                    <th rowspan="2" style="width: 8%; vertical-align: middle;">Tgl. Pesan</th>
+                    <th rowspan="2" style="width: 8%; vertical-align: middle;">Tgl. Terima</th>
+                </tr>
+                <tr>
+                    <th>Harga</th>
+                    <th>Total</th>
                 </tr>
             </thead>
             <tbody>
+                @php $rowNumber = 1; @endphp
                 @forelse ($records as $record)
-                    <tr>
-                        <td class="text-center">{{ $loop->iteration }}</td>
-                        <td>{{ $record->created_at->format('d-m-Y') }}</td>
-                        <td>{{ $record->supplier->name }}</td>
-                        <td>
-                            <ul>
-                                @foreach($record->items as $item)
-                                    <li>{{ \App\Models\SupplierItem::find($item['supplier_item_id'])->nama_item ?? 'N/A' }}</li>
-                                @endforeach
-                            </ul>
-                        </td>
-                        <td class="text-center">
-                            <ul>
-                                @foreach($record->items as $item)
-                                    <li>{{ $item['quantity'] ?? 0 }} {{ $item['unit'] ?? 'pcs' }}</li>
-                                @endforeach
-                            </ul>
-                        </td>
-                        <td class="text-right">
-                            <ul>
-                                @foreach($record->items as $item)
-                                    <li>Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</li>
-                                @endforeach
-                            </ul>
-                        </td>
-                        <td class="text-right">Rp {{ number_format($record->grand_total, 0, ',', '.') }}</td>
-                    </tr>
+                    @php $itemCount = count($record->items); @endphp
+                    @if($itemCount > 0)
+                        @foreach($record->items as $item)
+                            <tr>
+                                {{-- Kolom No (Hanya tampil di baris pertama per grup) --}}
+                                @if ($loop->first)
+                                    <td class="text-center" rowspan="{{ $itemCount }}">{{ $rowNumber++ }}</td>
+                                @endif
+
+                                {{-- Kolom-kolom per item --}}
+                                <td>{{ \App\Models\SupplierItem::find($item['supplier_item_id'])->nama_item ?? 'N/A' }}</td>
+                                <td class="text-center">{{ $item['quantity'] ?? 0 }}</td>
+                                <td class="text-center">{{ $item['unit'] ?? 'pcs' }}</td>
+                                <td class="text-right">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
+                                <td class="text-right">Rp {{ number_format(($item['quantity'] ?? 0) * ($item['price'] ?? 0), 0, ',', '.') }}</td>
+
+                                {{-- Kolom-kolom data pesanan (Hanya tampil di baris pertama per grup) --}}
+                                @if ($loop->first)
+                                    <td rowspan="{{ $itemCount }}">{{ $record->notes }}</td>
+                                    <td class="text-center" rowspan="{{ $itemCount }}">{{ ucfirst($record->payment_method) }}</td>
+                                    <td rowspan="{{ $itemCount }}">{{ $record->supplier->name ?? 'N/A' }}</td>
+                                    <td class="text-center" rowspan="{{ $itemCount }}">{{ $record->created_at->format('d-m-Y') }}</td>
+                                    <td class="text-center" rowspan="{{ $itemCount }}">{{ $record->updated_at->format('d-m-Y') }}</td>
+                                @endif
+                            </tr>
+                        @endforeach
+                    @endif
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center">Tidak ada data untuk periode ini.</td>
+                        <td colspan="11" class="text-center">Tidak ada data untuk periode ini.</td>
                     </tr>
                 @endforelse
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="6" class="text-right"><strong>Total Pengeluaran</strong></td>
+                    <td colspan="5" class="text-right"><strong>Total Pengeluaran</strong></td>
                     <td class="text-right"><strong>Rp {{ number_format($records->sum('grand_total'), 0, ',', '.') }}</strong></td>
+                    <td colspan="5"></td>
                 </tr>
             </tfoot>
         </table>
