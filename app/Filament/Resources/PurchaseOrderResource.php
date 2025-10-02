@@ -13,14 +13,15 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
-use Filament\Notifications\Notification; 
-use Illuminate\Support\Number; 
+use Filament\Notifications\Notification;
+use Illuminate\Support\Number;
 use Carbon\Carbon;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
-use Barryvdh\DomPDF\Facade\Pdf; // [1] Import class PDF
-use Symfony\Component\HttpFoundation\StreamedResponse; // [2] Import class StreamedResponse
+use Barryvdh\DomPDF\Facade\Pdf;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Filament\Tables\Columns\Summarizers\Sum; 
 
 class PurchaseOrderResource extends Resource
 {
@@ -28,9 +29,9 @@ class PurchaseOrderResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
 
-    protected static ?string $navigationLabel = 'Barang Masuk (PO)';
-    protected static ?string $modelLabel = 'Barang Masuk (PO)';
-    protected static ?string $pluralModelLabel = 'Barang Masuk (PO)';
+    protected static ?string $navigationLabel = 'Barang Masuk';
+    protected static ?string $modelLabel = 'Barang Masuk';
+    protected static ?string $pluralModelLabel = 'Barang Masuk';
     protected static ?string $navigationGroup = 'Manajemen Stok';
 
 
@@ -106,13 +107,13 @@ class PurchaseOrderResource extends Resource
                                                 'unit'             => $supplierItem->product?->unit ?? 'pcs',
                                                 'total'            => ($existing['quantity'] ?? 1) * ($supplierItem->harga ?? 0),
                                             ];
-                                        })->filter(); // Hapus item yang null
+                                        })->filter();
 
                                         $set('items', $newItems->values()->toArray());
                                         $grandTotal = $newItems->sum('total');
                                         $set('grand_total', $grandTotal);
                                     }),
-                                
+
                                 Forms\Components\Actions::make([
                                     Forms\Components\Actions\Action::make('addNewSupplierItem')
                                         ->label('(+) Tambah Produk Baru ke Supplier Ini')
@@ -125,6 +126,7 @@ class PurchaseOrderResource extends Resource
                                                 ->options(Product::query()->pluck('name', 'id'))
                                                 ->searchable()
                                                 ->required()
+                                                ->required()
                                                 ->reactive()
                                                 ->createOptionForm([
                                                     Forms\Components\TextInput::make('name')
@@ -135,7 +137,6 @@ class PurchaseOrderResource extends Resource
                                                         ->readOnly()
                                                         ->placeholder('Akan dibuat otomatis setelah disimpan'),
                                                     Forms\Components\TextInput::make('unit')->label('Satuan (pcs, box, dll)')->default('pcs')->required(),
-                                                    // ===== TAMBAHKAN FIELD INI =====
                                                     Forms\Components\TextInput::make('lifetime_penggunaan')
                                                         ->label('Lifetime Penggunaan')
                                                         ->numeric()
@@ -143,16 +144,12 @@ class PurchaseOrderResource extends Resource
                                                         ->default(0)
                                                         ->suffix('hari')
                                                         ->helperText('Masa ideal penggunaan produk dalam hari.'),
-                                                    // ===== AKHIR PENAMBAHAN =====
                                                     Forms\Components\TextInput::make('minimum_stock')->label('Stok Minimum')->numeric()->default(0),
                                                 ])
-                                                // ===== TAMBAHKAN BAGIAN INI =====
                                                 ->createOptionUsing(function (array $data): int {
                                                     $newProduct = Product::create($data);
-                                                    // Ingat: Model Product Anda akan otomatis membuat SKU saat event 'creating'
                                                     return $newProduct->id;
                                                 })
-                                                // ===== AKHIR PENAMBAHAN =====
                                                 ->afterStateUpdated(function ($state, callable $set) {
                                                     $product = Product::find($state);
                                                     if($product) {
@@ -171,7 +168,7 @@ class PurchaseOrderResource extends Resource
                                         ])
                                         ->action(function (array $data, callable $get, callable $set) {
                                             $supplierId = $get('supplier_id');
-                                            
+
                                             $newSupplierItem = SupplierItem::create([
                                                 'supplier_id' => $supplierId,
                                                 'product_id' => $data['product_id'],
@@ -207,11 +204,10 @@ class PurchaseOrderResource extends Resource
                                                 $grandTotal = collect($allItems)->sum(fn($item) => $item['total'] ?? 0);
                                                 $set('../../grand_total', $grandTotal);
                                             }),
-                                         Forms\Components\TextInput::make('unit')
+                                        Forms\Components\TextInput::make('unit')
                                             ->label('Satuan')
                                             ->disabled()
                                             ->dehydrated(),
-                                             // Ambil nilai 'unit'
                                         Forms\Components\TextInput::make('price')->label('Harga per Item')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                         Forms\Components\TextInput::make('total')->label('Total')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                     ])
@@ -223,8 +219,7 @@ class PurchaseOrderResource extends Resource
                                     })
                                     ->reorderable(false)
                                     ->deleteAction(fn (Forms\Components\Actions\Action $action) => $action->iconButton()),
-                                
-                                // ===== GRAND TOTAL DIPINDAHKAN KE SINI =====
+
                                 Forms\Components\TextInput::make('grand_total')
                                     ->label('Total Pesanan')
                                     ->numeric()
@@ -234,17 +229,15 @@ class PurchaseOrderResource extends Resource
                             ]),
                     ])->columnSpan(2),
 
-                    // ===== SIDEBAR (KANAN) - Memakai 1 dari 3 kolom =====
                     Forms\Components\Group::make()->schema([
                         Forms\Components\Section::make('Ringkasan & Opsi')
                             ->schema([
                                 Forms\Components\Placeholder::make('estimated_arrival_info')
                                     ->label('Estimasi Kedatangan')
                                     ->content(function () {
-                                        $eta = Carbon::now()->addDays(14)->locale('id_ID'); // <-- TAMBAHKAN INI
+                                        $eta = Carbon::now()->addDays(14)->locale('id_ID');
                                         return $eta->translatedFormat('l, d F Y') . ' (14 hari dari sekarang)';
                                     }),
-                                // ... komponen grand_total sudah dipindahkan dari sini
                                 Forms\Components\Select::make('payment_method')
                                     ->label('Metode Pembayaran')
                                     ->options(['po' => 'PO', 'cash' => 'Cash', 'urgent' => 'Urgent'])
@@ -265,45 +258,40 @@ class PurchaseOrderResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Tanggal PO')
+                    ->date('d M Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
                 Tables\Columns\TextColumn::make('po_number')->label('Nomor PO')->searchable(),
                 Tables\Columns\TextColumn::make('supplier.name')->label('Pemasok')->searchable(),
                 Tables\Columns\TextColumn::make('items')
                     ->label('Item Produk')
-                    ->listWithLineBreaks() // Menampilkan setiap item di baris baru
-                    ->limitList(3)         // Batasi tampilan awal 
+                    ->listWithLineBreaks()
+                    ->limitList(3)
                     ->state(function (PurchaseOrder $record): array {
-                        // Cek jika tidak ada item, kembalikan array kosong
+
                         if (empty($record->items)) {
                             return [];
                         }
 
-                        // Ubah array 'items' dari record menjadi collection
                         $items = collect($record->items);
 
-                        // 1. Ambil semua ID item supplier dalam satu kali jalan
                         $itemIds = $items->pluck('supplier_item_id')->unique();
 
-                        // 2. Ambil semua data produk dari database dalam satu query
-                        //    untuk menghindari N+1 problem (query berulang-ulang)
                         $supplierItems = \App\Models\SupplierItem::whereIn('id', $itemIds)
                             ->get()
-                            ->keyBy('id'); // Jadikan ID sebagai key untuk pencarian mudah
+                            ->keyBy('id');
 
-                        // 3. Buat string format "Nama (Jumlah pcs)" untuk setiap item
                         return $items->map(function ($item) use ($supplierItems) {
                             $id = $item['supplier_item_id'];
                             $quantity = $item['quantity'] ?? 0;
-                            
-                            // [1] Ambil data 'unit' dari array item, dengan 'pcs' sebagai fallback
-                            $unit = $item['unit'] ?? 'pcs'; 
-
+                            $unit = $item['unit'] ?? 'pcs';
                             $name = $supplierItems->get($id)?->nama_item ?? 'Produk tidak ditemukan';
-                            
-                            // [2] Gunakan variabel $unit di sini, bukan 'pcs' yang di-hardcode
                             return "{$name} ({$quantity} {$unit})";
                         })->all();
                     }),
-                
+
                 Tables\Columns\TextColumn::make('prices')
                     ->label('Harga per Item')
                     ->listWithLineBreaks()
@@ -311,15 +299,13 @@ class PurchaseOrderResource extends Resource
                         if (empty($record->items)) {
                             return [];
                         }
-                        
-                        // Ambil data harga dan format satu per satu
                         return collect($record->items)->map(function ($item) {
                             $price = $item['price'] ?? 0;
-                            // Format angka menjadi string dengan format Rupiah
                             return 'Rp ' . number_format($price, 2, ',', '.');
                         })->all();
                     }),
-                
+
+                // [UBAH BAGIAN INI] Tambahkan ->summarize() di bawah
                 Tables\Columns\TextColumn::make('grand_total')
                     ->label('Total Pesanan')
                     ->numeric(
@@ -327,8 +313,12 @@ class PurchaseOrderResource extends Resource
                         decimalSeparator: ',',
                         thousandsSeparator: '.'
                     )
-                    ->prefix('Rp ') // Menambahkan 'Rp ' di depan angka
-                    ->sortable(),
+                    ->prefix('Rp ')
+                    ->sortable()
+                    ->summarize(Sum::make()
+                        ->label('Total Pengeluaran')
+                        ->numeric(decimalPlaces: 2, decimalSeparator: ',', thousandsSeparator: '.')
+                        ->money('IDR')),
 
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -337,52 +327,38 @@ class PurchaseOrderResource extends Resource
                         'completed' => 'success',
                         default => 'gray'
                     }),
-                
-                // ===== AWAL PERUBAHAN =====
-                Tables\Columns\TextColumn::make('duration') // [1] Ganti nama teknis kolom
-                    ->label('Durasi') // [2] Ganti label header tabel
+
+                Tables\Columns\TextColumn::make('duration')
+                    ->label('Durasi')
                     ->badge()
                     ->state(function (PurchaseOrder $record): int {
-                        // [3] Logika perhitungan durasi
                         if ($record->status === 'completed') {
-                            // Jika SUDAH diterima, hitung selisih dari tanggal dibuat sampai tanggal diupdate (diterima)
                             return $record->created_at->startOfDay()->diffInDays($record->updated_at->startOfDay()) + 1;
                         }
-                        // Jika MASIH dipesan, hitung selisih dari tanggal dibuat sampai hari ini
                         return $record->created_at->startOfDay()->diffInDays(now()->startOfDay()) + 1;
                     })
                     ->formatStateUsing(function (int $state, PurchaseOrder $record): string {
-                        // [4] Logika format teks yang ditampilkan
                         if ($record->status === 'completed') {
                             return "Tiba dalam {$state} hari";
                         }
 
-                        if ($state > 14) { // Estimasi kedatangan 14 hari
+                        if ($state > 14) {
                             return 'Terlambat (' . ($state - 14) . ' hari)';
                         }
-                        
+
                         return "Hari ke-{$state}";
                     })
                     ->color(function (int $state, PurchaseOrder $record): string {
-                        // [5] Logika pewarnaan badge
                         if ($record->status === 'completed') {
-                            return 'success'; // Warna hijau jika sudah tiba
+                            return 'success';
                         }
-                        
+
                         if ($state > 14) {
-                            return 'danger'; // Warna merah jika terlambat
+                            return 'danger';
                         }
 
-                        return 'info'; // Warna biru jika masih dalam proses
+                        return 'info';
                     }),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Tanggal PO')
-                    ->date('d M Y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
-                    //di delete after this
-                    //->label('Tanggal PO')
             ])
             ->filters([
                 Filter::make('created_at')
@@ -403,12 +379,11 @@ class PurchaseOrderResource extends Resource
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     })
-                    
+
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                // Di dalam Actions
                 Tables\Actions\Action::make('complete')
                     ->label('Terima Barang')
                     ->icon('heroicon-o-check-circle')
@@ -416,11 +391,9 @@ class PurchaseOrderResource extends Resource
                     ->requiresConfirmation()
                     ->action(function (PurchaseOrder $record) {
                         DB::transaction(function () use ($record) {
-                            // '$record->items' sekarang akan berisi 'product_id'
                             foreach ($record->items as $item) {
                                 $productId = $item['product_id'] ?? null;
-                                
-                                // Pengecekan ini sekarang tidak akan gagal lagi
+
                                 if (!$productId) {
                                     continue;
                                 }
@@ -428,8 +401,6 @@ class PurchaseOrderResource extends Resource
                                 $product = Product::find($productId);
                                 if ($product) {
                                     $qty = $item['quantity'] ?? 0;
-                                    
-                                    // Baris ini sekarang akan berjalan dengan benar
                                     $product->increment('stock', $qty);
 
                                     StockMovement::create([
@@ -442,38 +413,32 @@ class PurchaseOrderResource extends Resource
                                 }
                             }
 
-                $record->update(['status' => 'completed']);
-            });
+                            $record->update(['status' => 'completed']);
+                        });
 
-        Notification::make()
-            ->title('Barang diterima, stok telah diupdate!')
-            ->success()
-            ->send();
-    })
-    ->visible(fn(PurchaseOrder $record): bool => $record->status === 'ordered'),
+                        Notification::make()
+                            ->title('Barang diterima, stok telah diupdate!')
+                            ->success()
+                            ->send();
+                    })
+                    ->visible(fn(PurchaseOrder $record): bool => $record->status === 'ordered'),
 
-    // ===== [3] AWAL PENAMBAHAN AKSI CETAK PDF =====
                 Tables\Actions\Action::make('printInvoice')
                     ->label('Cetak Invoice')
                     ->icon('heroicon-o-printer')
                     ->color('info')
                     ->action(function (PurchaseOrder $record): StreamedResponse {
-                        // Memuat view blade untuk invoice dan mengirim data record
                         $pdf = PDF::loadView('invoices.purchase_order', compact('record'));
-                        
-                        // Mengirimkan file PDF sebagai download langsung ke browser
+
                         return response()->streamDownload(function () use ($pdf) {
                             echo $pdf->output();
                         }, 'invoice-' . $record->po_number . '.pdf');
                     })
-                    // Tombol ini hanya akan terlihat jika status PO sudah 'completed'
                     ->visible(fn (PurchaseOrder $record): bool => $record->status === 'completed'),
-                // ===== AKHIR PENAMBAHAN AKSI CETAK PDF =====
-
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -17,6 +17,9 @@ class UserRoleSeeder extends Seeder
         $adminRole   = Role::firstOrCreate(['name' => 'Administrator']);
         $staffRole   = Role::firstOrCreate(['name' => 'Staf Gudang']);
         $managerRole = Role::firstOrCreate(['name' => 'Manajer Gudang']);
+        
+        //delete this
+        $administratorRole = Role::firstOrCreate(['name' => 'Administrator']);
 
         // Buat User Administrator
         $admin = User::factory()->create([
@@ -38,5 +41,13 @@ class UserRoleSeeder extends Seeder
             'email' => 'manager@gudang.com',
         ]);
         $manager->assignRole($managerRole);
+
+
+        // Buat User Admin 2 ✅ (DELETE)
+        $admin2 = User::factory()->create([
+            'name' => 'Administrator',
+            'email' => 'Administrator@gudang.com',
+        ]);
+        $admin2->assignRole($administratorRole);
     }
 }

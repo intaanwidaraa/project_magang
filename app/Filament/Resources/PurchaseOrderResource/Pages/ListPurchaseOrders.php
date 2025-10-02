@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\PurchaseOrderResource\Pages;
 
 use App\Filament\Resources\PurchaseOrderResource;
+// [FIX] 'use' statement disesuaikan dengan lokasi file widget Anda
+use App\Filament\Resources\PurchaseOrderResource\Widgets\TotalPengeluaranWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -15,5 +17,12 @@ class ListPurchaseOrders extends ListRecords
         return [
             Actions\CreateAction::make(),
         ];
+    }
+
+    
+    
+    public function updatedTableFilters(): void
+    {
+        $this->dispatch('updateWidgetData', filters: $this->tableFilters);
     }
 }

@@ -19,10 +19,9 @@ class ProductResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
 
-    // Properti untuk mengubah nama di sidebar (Bahasa Indonesia)
     protected static ?string $navigationLabel = 'Produk (Barang)';
-    protected static ?string $modelLabel = 'Produk';
-    protected static ?string $pluralModelLabel = 'Produk';
+    protected static ?string $modelLabel = 'Produk ';
+    protected static ?string $pluralModelLabel = 'Produk ';
 
     public static function form(Form $form): Form
     {
