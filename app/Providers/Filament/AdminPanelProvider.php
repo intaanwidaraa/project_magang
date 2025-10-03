@@ -29,8 +29,17 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::Blue,
             ])
+
+            // --- TAMBAHKAN BARIS INI ---
+            ->brandName('Sistem Gudang dan Persediaan Sparepart') 
+            ->favicon(asset('images/Logo_MAS.png'))
+            ->brandLogoHeight('3rem') 
+            ->brandLogo(asset('images/Logo_MAS.png')) // Ganti 'logo-anda.png' dengan nama file Anda
+
+            
+
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([

@@ -68,7 +68,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->label('Pilih Jenis Laporan')
                             ->options([
                                 'stok' => 'Laporan Stok Harian',
-                                'barang_masuk' => 'Laporan Barang Masuk (PO)',
+                                'barang_masuk' => 'Laporan Barang Masuk',
                             ])
                             ->live()
                             ->columnSpan(3),
@@ -237,6 +237,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
     {
         return match ($this->data['jenisLaporan'] ?? 'stok') {
             'stok' => [
+                // ... (kode untuk laporan stok tidak berubah)
                 TextColumn::make('tanggal')->label('Tanggal')->state(fn() => Carbon::parse($this->data['tanggal'])->translatedFormat('d M Y')),
                 TextColumn::make('name')->label('Nama Produk')->searchable(),
                 TextColumn::make('stok_awal')->label('Stok Awal')->state(function (Product $record) {
@@ -249,10 +250,8 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                 TextColumn::make('stock')->label('Stok Akhir')->state(fn(Product $record) => $record->stock . ' ' . $record->unit)->sortable(),
             ],
             'barang_masuk' => [
-                TextColumn::make('created_at')->label('Tanggal')->date('d-m-Y')->sortable(),
-                TextColumn::make('supplier.name')->label('Pemasok')->searchable(),
-                TextColumn::make('items_list')
-                    ->label('Jenis Produk')
+                TextColumn::make('items_name')
+                    ->label('Nama Barang')
                     ->listWithLineBreaks()
                     ->state(function (PurchaseOrder $record): array {
                         if (empty($record->items)) return [];
@@ -260,22 +259,20 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                         $supplierItems = \App\Models\SupplierItem::whereIn('id', $itemIds)->get()->keyBy('id');
                         return collect($record->items)->map(fn($item) => $supplierItems->get($item['supplier_item_id'])?->nama_item ?? 'N/A')->all();
                     }),
-                TextColumn::make('items_quantity')
-                    ->label('Jumlah Produk')
+                TextColumn::make('items_qty')
+                    ->label('Qty')
                     ->listWithLineBreaks()
-                    ->state(function (PurchaseOrder $record): array {
-                        if (empty($record->items)) return [];
-                        return collect($record->items)->map(fn($item) => ($item['quantity'] ?? 0) . ' ' . ($item['unit'] ?? 'pcs'))->all();
-                    }),
+                    ->state(fn (PurchaseOrder $record): array => collect($record->items)->map(fn($item) => $item['quantity'] ?? 0)->all()),
+                TextColumn::make('items_unit')
+                    ->label('Satuan')
+                    ->listWithLineBreaks()
+                    ->state(fn (PurchaseOrder $record): array => collect($record->items)->map(fn($item) => $item['unit'] ?? 'pcs')->all()),
                 TextColumn::make('items_price')
                     ->label('Harga Satuan')
                     ->listWithLineBreaks()
-                    ->state(function (PurchaseOrder $record): array {
-                        if (empty($record->items)) return [];
-                        return collect($record->items)->map(fn($item) => 'Rp ' . number_format($item['price'] ?? 0, 0, ',', '.'))->all();
-                    }),
+                    ->state(fn (PurchaseOrder $record): array => collect($record->items)->map(fn($item) => 'Rp ' . number_format($item['price'] ?? 0, 0, ',', '.'))->all()),
                 TextColumn::make('grand_total')
-                    ->label('Total Harga')
+                    ->label('Total Pesanan') // Label diubah agar lebih jelas
                     ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
                     ->prefix('Rp ')
                     ->alignEnd()
@@ -283,6 +280,12 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                         ->label('Total Keseluruhan')
                         ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
                         ->money('IDR')),
+                TextColumn::make('notes')->label('Keterangan')->toggleable(),
+                TextColumn::make('payment_method')->label('Metode Pembayaran')->badge(),
+                TextColumn::make('supplier.name')->label('Supplier')->searchable(),
+                TextColumn::make('created_at')->label('Tanggal Pemesanan')->date('d M Y')->sortable(),
+                TextColumn::make('updated_at')->label('Tanggal Penerimaan')->date('d M Y')->sortable(),
+
             ],
             default => [],
         };

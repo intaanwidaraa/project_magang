@@ -6,11 +6,10 @@
     <style>
         body {
             font-family: 'Helvetica', sans-serif;
-            font-size: 9px; /* Ukuran font dikecilkan lagi agar muat */
+            font-size: 9px;
             color: #333;
         }
         .container {
-            /* [PERUBAHAN] Ganti width menjadi max-width agar margin auto berfungsi */
             max-width: 900px; 
             margin: 0 auto;
             padding: 20px;
@@ -42,7 +41,7 @@
             margin-top: 20px;
         }
         .items-table th, .items-table td {
-            padding: 5px; /* Padding dikecilkan */
+            padding: 5px;
             border: 1px solid #ccc;
             text-align: left;
             vertical-align: middle;
@@ -75,7 +74,6 @@
         $logoPath = public_path('images/Logo_MAS.png');
         $periodeTeks = '';
 
-        // [PERBAIKAN] Logika untuk menentukan teks periode berdasarkan filter yang dipilih
         switch ($data['filterPeriode']) {
             case 'rentang_tanggal':
                 $mulai = isset($data['tanggal_mulai']) ? \Carbon\Carbon::parse($data['tanggal_mulai'])->translatedFormat('d F Y') : 'N/A';
@@ -99,7 +97,7 @@
 
     <div class="container">
         <table class="header-table">
-             <tr>
+            <tr>
                 <td style="width: 20%;">
                     @if(file_exists($logoPath))
                         <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" style="max-width: 100px;">
@@ -120,7 +118,6 @@
         </div>
 
         <table class="items-table">
-            {{-- [PERUBAHAN] Header tabel diubah sesuai permintaan --}}
             <thead>
                 <tr>
                     <th rowspan="2" style="width: 3%; vertical-align: middle;">No</th>
@@ -135,8 +132,8 @@
                     <th rowspan="2" style="width: 8%; vertical-align: middle;">Tgl. Terima</th>
                 </tr>
                 <tr>
-                    <th>Harga</th>
-                    <th>Total</th>
+                    <th>Harga Satuan</th>
+                    <th>Total Pesanan</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,20 +143,17 @@
                     @if($itemCount > 0)
                         @foreach($record->items as $item)
                             <tr>
-                                {{-- Kolom No (Hanya tampil di baris pertama per grup) --}}
                                 @if ($loop->first)
                                     <td class="text-center" rowspan="{{ $itemCount }}">{{ $rowNumber++ }}</td>
                                 @endif
 
-                                {{-- Kolom-kolom per item --}}
                                 <td>{{ \App\Models\SupplierItem::find($item['supplier_item_id'])->nama_item ?? 'N/A' }}</td>
                                 <td class="text-center">{{ $item['quantity'] ?? 0 }}</td>
                                 <td class="text-center">{{ $item['unit'] ?? 'pcs' }}</td>
                                 <td class="text-right">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
-                                <td class="text-right">Rp {{ number_format(($item['quantity'] ?? 0) * ($item['price'] ?? 0), 0, ',', '.') }}</td>
 
-                                {{-- Kolom-kolom data pesanan (Hanya tampil di baris pertama per grup) --}}
                                 @if ($loop->first)
+                                    <td class="text-right" rowspan="{{ $itemCount }}">Rp {{ number_format($record->grand_total, 0, ',', '.') }}</td>
                                     <td rowspan="{{ $itemCount }}">{{ $record->notes }}</td>
                                     <td class="text-center" rowspan="{{ $itemCount }}">{{ ucfirst($record->payment_method) }}</td>
                                     <td rowspan="{{ $itemCount }}">{{ $record->supplier->name ?? 'N/A' }}</td>

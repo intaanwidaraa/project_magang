@@ -380,6 +380,30 @@ class PurchaseOrderResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                // --- AWAL KODE BARU ---
+                Tables\Actions\Action::make('whatsapp')
+                    ->label('Hubungi Supplier')
+                    ->icon('heroicon-o-chat-bubble-left-right') // Anda bisa ganti ikonnya
+                    ->color('success')
+                    ->url(function (PurchaseOrder $record): string {
+                        // 1. Ambil nomor telepon dari relasi supplier
+                        $phone = $record->supplier->phone_number;
+
+                        // 2. Format nomor telepon ke format internasional (ganti 0 di depan dengan 62)
+                        if (str_starts_with($phone, '0')) {
+                            $phone = '62' . substr($phone, 1);
+                        }
+                        
+                        // 3. Buat pesan default (termasuk nomor PO)
+                        $poNumber = $record->po_number;
+                        $message = "Halo, kami dari PT MAKMUR ARTHA SEJAHTERA. Ingin menanyakan status pesanan dengan nomor PO: {$poNumber}. Terima kasih.";
+
+                        // 4. Buat URL WhatsApp
+                        return 'https://wa.me/' . $phone . '?text=' . urlencode($message);
+                    })
+                    ->openUrlInNewTab()
+                    ->visible(fn (PurchaseOrder $record): bool => isset($record->supplier->phone_number)), // Tombol hanya muncul jika ada nomor telepon
+                // --- AKHIR KODE BARU ---
                 Tables\Actions\Action::make('complete')
                     ->label('Terima Barang')
                     ->icon('heroicon-o-check-circle')

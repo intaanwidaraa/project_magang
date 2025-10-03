@@ -32,7 +32,10 @@ class SupplierResource extends Resource
                 Forms\Components\TextInput::make('phone_number')
                     ->label('Nomor Telepon')
                     ->tel()
-                    ->maxLength(255),
+                    ->prefix('+62') // Tambahkan prefix untuk memandu user
+                    ->numeric()     // Pastikan hanya angka yang dimasukkan
+                    ->helperText('Masukkan nomor tanpa angka 0 di depan. Contoh: 81234567890')
+                    ->maxLength(15), // Batasi panjang nomor agar lebih valid
 
                 Forms\Components\Textarea::make('address')
                     ->label('Alamat')
@@ -56,7 +59,32 @@ class SupplierResource extends Resource
                                     $set('nama_item', $product->name);
 
                                 }
+                            })
+
+                            // --- PENAMBAHAN FITUR DIMULAI DI SINI ---
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Nama Produk Baru')
+                                    ->required()
+                                    ->maxLength(255),
+                                
+                                Forms\Components\TextInput::make('unit')
+                                    ->label('Satuan (pcs, box, dll)')
+                                    ->required()
+                                    ->default('pcs')
+                                    ->maxLength(255),
+
+                                Forms\Components\TextInput::make('minimum_stock')
+                                    ->label('Stok Minimum')
+                                    ->numeric()
+                                    ->default(5)
+                                    ->required(),
+                            ])
+                            ->createOptionUsing(function (array $data): int {
+                                $newProduct = Product::create($data);
+                                return $newProduct->id;
                             }),
+                            // --- PENAMBAHAN FITUR SELESAI ---
 
                         Forms\Components\TextInput::make('nama_item')
                             ->label('Nama Item (Versi Supplier)')

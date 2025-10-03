@@ -43,11 +43,27 @@ class StockRequisitionResource extends Resource
                                     ->options([
                                         'mekanik' => 'Mekanik',
                                         'logistik' => 'Logistik',
+                                        'engineering' => 'Engineering',
+                                        'utility' => 'Utility',
+                                        'workshop' => 'Workshop',
+                                        'packing' => 'Packing',
+                                        'admin' => 'Admin',
                                         'lainnya' => 'Lainnya',
-
                                     ])
                                     ->required(),
-                            ])->columns(2), 
+                                
+                                // --- PENAMBAHAN FORM SHIFT ---
+                                Forms\Components\Select::make('shift')
+                                    ->label('Shift')
+                                    ->options([
+                                        '1' => 'Shift 1',
+                                        '2' => 'Shift 2',
+                                        '3' => 'Shift 3',
+                                    ])
+                                    ->required(),
+                                // --- AKHIR PENAMBAHAN ---
+
+                            ])->columns(3), // <-- Ubah menjadi 3 agar sejajar 
 
                         Forms\Components\Section::make('Daftar Barang')
                             ->schema([
