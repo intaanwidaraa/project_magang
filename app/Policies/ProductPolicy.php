@@ -13,7 +13,7 @@ class ProductPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('Administrator');
+        return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
     /**
@@ -21,7 +21,7 @@ class ProductPolicy
      */
     public function view(User $user, Product $product): bool
     {
-        return $user->hasRole('Administrator');
+        return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
     /**
@@ -37,7 +37,7 @@ class ProductPolicy
      */
     public function update(User $user, Product $product): bool
     {
-        return $user->hasRole('Administrator');
+       return $user->hasRole('Administrator');
     }
 
     /**
@@ -53,7 +53,7 @@ class ProductPolicy
      */
     public function restore(User $user, Product $product): bool
     {
-        return $user->hasRole('Administrator');
+        return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
     /**
@@ -61,6 +61,6 @@ class ProductPolicy
      */
     public function forceDelete(User $user, Product $product): bool
     {
-        return $user->hasRole('Administrator');
+        return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 }

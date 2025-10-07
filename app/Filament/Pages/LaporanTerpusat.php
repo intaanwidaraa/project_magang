@@ -239,7 +239,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             'stok' => [
                 // ... (kode untuk laporan stok tidak berubah)
                 TextColumn::make('tanggal')->label('Tanggal')->state(fn() => Carbon::parse($this->data['tanggal'])->translatedFormat('d M Y')),
-                TextColumn::make('name')->label('Nama Produk')->searchable(),
+                TextColumn::make('name')->label('Nama Barang')->searchable(),
                 TextColumn::make('stok_awal')->label('Stok Awal')->state(function (Product $record) {
                     $masukHariIni = $record->stockMovements->where('type', 'in')->sum('quantity');
                     $keluarHariIni = $record->stockMovements->where('type', 'out')->sum('quantity');

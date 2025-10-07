@@ -45,8 +45,9 @@ class PurchaseOrderResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('po_number')
                                     ->label('Nomor PO')
-                                    ->default('PO-' . random_int(1000, 9999))
-                                    ->required(),
+                                    ->placeholder('Masukkan nomor PO secara manual') // Tambahan sebagai petunjuk
+                                    ->required()
+                                    ->unique(ignoreRecord: true), // Tambahan agar setiap PO unik
                                 Forms\Components\Select::make('supplier_id')
                                     ->label('Pemasok')
                                     ->relationship('supplier', 'name')
@@ -263,7 +264,7 @@ class PurchaseOrderResource extends Resource
                 Tables\Columns\TextColumn::make('po_number')->label('Nomor PO')->searchable(),
                 Tables\Columns\TextColumn::make('supplier.name')->label('Pemasok')->searchable(),
                 Tables\Columns\TextColumn::make('items')
-                    ->label('Item Produk')
+                    ->label('Nama Barang')
                     ->listWithLineBreaks()
                     ->limitList(3)
                     ->state(function (PurchaseOrder $record): array {
@@ -290,7 +291,7 @@ class PurchaseOrderResource extends Resource
                     }),
 
                 Tables\Columns\TextColumn::make('prices')
-                    ->label('Harga per Item')
+                    ->label('Harga Satuan')
                     ->listWithLineBreaks()
                     ->state(function (PurchaseOrder $record): array {
                         if (empty($record->items)) {

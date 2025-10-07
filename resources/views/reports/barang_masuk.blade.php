@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Barang Masuk (PO)</title>
+    <title>Laporan Barang Masuk</title>
     <style>
         body {
             font-family: 'Helvetica', sans-serif;
@@ -52,6 +52,7 @@
             color: white;
             font-weight: bold;
             text-align: center;
+            vertical-align: middle; /* Menambahkan ini untuk konsistensi */
         }
         .items-table tfoot td {
             font-weight: bold;
@@ -120,20 +121,17 @@
         <table class="items-table">
             <thead>
                 <tr>
-                    <th rowspan="2" style="width: 3%; vertical-align: middle;">No</th>
-                    <th rowspan="2" style="vertical-align: middle;">Nama Barang</th>
-                    <th rowspan="2" style="width: 4%; vertical-align: middle;">Qty</th>
-                    <th rowspan="2" style="width: 6%; vertical-align: middle;">Satuan</th>
-                    <th colspan="2" style="width: 20%;">Estimasi Harga</th>
-                    <th rowspan="2" style="width: 12%; vertical-align: middle;">Keterangan</th>
-                    <th rowspan="2" style="width: 7%; vertical-align: middle;">Pembayaran</th>
-                    <th rowspan="2" style="vertical-align: middle;">Supplier</th>
-                    <th rowspan="2" style="width: 8%; vertical-align: middle;">Tgl. Pesan</th>
-                    <th rowspan="2" style="width: 8%; vertical-align: middle;">Tgl. Terima</th>
-                </tr>
-                <tr>
-                    <th>Harga Satuan</th>
-                    <th>Total Pesanan</th>
+                    <th style="width: 3%;">No</th>
+                    <th>Nama Barang</th>
+                    <th style="width: 4%;">Qty</th>
+                    <th style="width: 6%;">Satuan</th>
+                    <th style="width: 10%;">Harga Satuan</th>
+                    <th style="width: 10%;">Total Pesanan</th>
+                    <th style="width: 12%;">Keterangan</th>
+                    <th style="width: 7%;">Pembayaran</th>
+                    <th>Supplier</th>
+                    <th style="width: 8%;">Tgl. Pesan</th>
+                    <th style="width: 8%;">Tgl. Terima</th>
                 </tr>
             </thead>
             <tbody>

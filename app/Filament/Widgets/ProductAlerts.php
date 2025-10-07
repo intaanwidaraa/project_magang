@@ -30,7 +30,7 @@ class ProductAlerts extends BaseWidget
             )
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Nama Produk')
+                    ->label('Nama Barang')
                     ->sortable()
                     ->searchable(),
 

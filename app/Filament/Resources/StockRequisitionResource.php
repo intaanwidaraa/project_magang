@@ -134,7 +134,12 @@ class StockRequisitionResource extends Resource
                     'pending' => 'warning',
                     'completed' => 'success',
                 }),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+                 // --- PERUBAHAN DI SINI ---
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Tanggal') // Mengubah label agar lebih sesuai
+                    ->date('d M Y')     
+                    ->sortable(),
+                // --- AKHIR PERUBAHAN ---
             ])
             ->filters([
                 //

@@ -19,7 +19,7 @@ class LowStockProducts extends BaseWidget
                 Product::query()->whereColumn('stock', '<=', 'minimum_stock')
             )
             ->columns([
-                Tables\Columns\TextColumn::make('name')->label('Nama Produk'),
+                Tables\Columns\TextColumn::make('name')->label('Nama Barang'),
                 Tables\Columns\TextColumn::make('stock')->label('Stok Saat Ini')->badge()->color('danger'),
                 Tables\Columns\TextColumn::make('minimum_stock')->label('Stok Minimum')->badge()->color('warning'),
             ])
