@@ -17,9 +17,7 @@ use App\Models\StockMovement;
 class StockRequisitionResource extends Resource
 {
     protected static ?string $model = StockRequisition::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-arrow-up-on-square';
-
     protected static ?string $navigationLabel = 'Barang Keluar';
     protected static ?string $modelLabel = 'Barang Keluar';
     protected static ?string $pluralModelLabel = 'Barang Keluar';
@@ -130,15 +128,13 @@ class StockRequisitionResource extends Resource
                     'pending' => 'warning',
                     'completed' => 'success',
                 }),
-                 // --- PERUBAHAN DI SINI ---
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Tanggal') // Mengubah label agar lebih sesuai
+                    ->label('Tanggal') 
                     ->date('d M Y')     
                     ->sortable(),
-                // --- AKHIR PERUBAHAN ---
             ])
             ->filters([
-                //
+                
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

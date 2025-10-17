@@ -27,9 +27,7 @@ use Filament\Tables\Filters\SelectFilter;
 class PurchaseOrderResource extends Resource
 {
     protected static ?string $model = PurchaseOrder::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
-
     protected static ?string $navigationLabel = 'Barang Masuk';
     protected static ?string $modelLabel = 'Barang Masuk';
     protected static ?string $pluralModelLabel = 'Barang Masuk';
@@ -111,6 +109,7 @@ class PurchaseOrderResource extends Resource
                                                 'unit'             => $supplierItem->product?->unit ?? 'pcs',
                                                 'total'            => ($existing['quantity'] ?? 1) * ($supplierItem->harga ?? 0),
                                             ];
+
                                         })->filter();
 
                                         $set('items', $newItems->values()->toArray());
@@ -392,30 +391,24 @@ class PurchaseOrderResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                // --- AWAL KODE BARU ---
                 Tables\Actions\Action::make('whatsapp')
                     ->label('Hubungi Supplier')
-                    ->icon('heroicon-o-chat-bubble-left-right') // Anda bisa ganti ikonnya
+                    ->icon('heroicon-o-chat-bubble-left-right') 
                     ->color('success')
                     ->url(function (PurchaseOrder $record): string {
-                        // 1. Ambil nomor telepon dari relasi supplier
                         $phone = $record->supplier->phone_number;
 
-                        // 2. Format nomor telepon ke format internasional (ganti 0 di depan dengan 62)
                         if (str_starts_with($phone, '0')) {
                             $phone = '62' . substr($phone, 1);
                         }
                         
-                        // 3. Buat pesan default (termasuk nomor PO)
                         $poNumber = $record->po_number;
                         $message = "Halo, kami dari PT MAKMUR ARTHA SEJAHTERA. Ingin menanyakan status pesanan dengan nomor PO: {$poNumber}. Terima kasih.";
-
-                        // 4. Buat URL WhatsApp
                         return 'https://wa.me/' . $phone . '?text=' . urlencode($message);
                     })
                     ->openUrlInNewTab()
-                    ->visible(fn (PurchaseOrder $record): bool => isset($record->supplier->phone_number)), // Tombol hanya muncul jika ada nomor telepon
-                // --- AKHIR KODE BARU ---
+                    ->visible(fn (PurchaseOrder $record): bool => isset($record->supplier->phone_number)), 
+                
                 Tables\Actions\Action::make('complete')
                     ->label('Terima Barang')
                     ->icon('heroicon-o-check-circle')
@@ -457,17 +450,15 @@ class PurchaseOrderResource extends Resource
                 
                  Tables\Actions\Action::make('printFPPB')
                     ->label('Cetak FPPB')
-                    ->icon('heroicon-o-document-text') // Ikon yang lebih cocok untuk dokumen
-                    ->color('warning') // Warna yang berbeda dari invoice
+                    ->icon('heroicon-o-document-text') 
+                    ->color('warning') 
                     ->action(function (PurchaseOrder $record): StreamedResponse {
-                        // Pastikan Anda membuat view Blade baru bernama 'invoices.fppb'
                         $pdf = PDF::loadView('invoices.fppb', compact('record'));
 
                         return response()->streamDownload(function () use ($pdf) {
                             echo $pdf->output();
                         }, 'FPPB-' . $record->po_number . '.pdf');
                     })
-                    // Tombol ini harus selalu terlihat (visible) selama data sudah tersimpan
                     ->visible(true), 
 
                 Tables\Actions\Action::make('printInvoice')

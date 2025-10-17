@@ -15,7 +15,6 @@ use App\Filament\Resources\SupplierResource\RelationManagers\ItemsRelationManage
 class SupplierResource extends Resource
 {
     protected static ?string $model = Supplier::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-truck';
     protected static ?string $navigationLabel = 'Pemasok (Supplier)';
     protected static ?string $modelLabel = 'Pemasok';
@@ -33,11 +32,10 @@ class SupplierResource extends Resource
                 Forms\Components\TextInput::make('phone_number')
                     ->label('Nomor Telepon')
                     ->tel()
-                    ->prefix('+62') // Tambahkan prefix untuk memandu user
-                    ->numeric()     // Pastikan hanya angka yang dimasukkan
+                    ->prefix('+62') 
+                    ->numeric()     
                     ->helperText('Masukkan nomor tanpa angka 0 di depan. Contoh: 81234567890')
-                    ->maxLength(15), // Batasi panjang nomor agar lebih valid
-
+                    ->maxLength(15), 
                 Forms\Components\Textarea::make('address')
                     ->label('Alamat')
                     ->columnSpanFull(),
@@ -63,7 +61,6 @@ class SupplierResource extends Resource
                                 }
                             })
 
-                            // --- PENAMBAHAN FITUR DIMULAI DI SINI ---
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nama Produk Baru')
@@ -86,7 +83,6 @@ class SupplierResource extends Resource
                                 $newProduct = Product::create($data);
                                 return $newProduct->id;
                             }),
-                            // --- PENAMBAHAN FITUR SELESAI ---
 
                         Forms\Components\TextInput::make('nama_item')
                             ->label('Nama Item (Versi Supplier)')
@@ -140,7 +136,7 @@ class SupplierResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ItemsRelationManager::class, // <-- Daftarkan di sini
+            ItemsRelationManager::class, 
         ];
     }
 
