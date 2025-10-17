@@ -15,10 +15,16 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        // Anda bisa biarkan atau hapus bagian ini sesuai kebutuhan
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
-        $this->call(UserRoleSeeder::class);
+        
+        // Daftarkan semua seeder Anda di dalam array ini
+        $this->call([
+            UserRoleSeeder::class,
+            ProductSeeder::class, // <-- TAMBAHKAN BARIS INI
+        ]);
     }
 }

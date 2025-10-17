@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Filament\Tables\Columns\Summarizers\Sum; 
+use Filament\Tables\Filters\SelectFilter;
 
 class PurchaseOrderResource extends Resource
 {
@@ -41,13 +42,17 @@ class PurchaseOrderResource extends Resource
             ->schema([
                 Forms\Components\Grid::make()->columns(3)->schema([
                     Forms\Components\Group::make()->schema([
-                        Forms\Components\Section::make('Informasi Pesanan')
+                        Forms\Components\Section::make('Informasi Pembelian')
                             ->schema([
                                 Forms\Components\TextInput::make('po_number')
                                     ->label('Nomor PO')
-                                    ->placeholder('Masukkan nomor PO secara manual') // Tambahan sebagai petunjuk
+                                    ->placeholder('Masukkan nomor PO secara manual') 
                                     ->required()
-                                    ->unique(ignoreRecord: true), // Tambahan agar setiap PO unik
+                                    ->unique(ignoreRecord: true), 
+                                Forms\Components\DatePicker::make('created_at')
+                                    ->label('Tanggal Pembelian')
+                                    ->required()
+                                    ->default(now()), 
                                 Forms\Components\Select::make('supplier_id')
                                     ->label('Pemasok')
                                     ->relationship('supplier', 'name')
@@ -63,7 +68,8 @@ class PurchaseOrderResource extends Resource
                                         $set('products', []);
                                         $set('items', []);
                                     })
-                                    ->required(),
+                                    ->required()
+                                    ->columnSpanFull(),
                             ])->columns(2),
 
                         Forms\Components\Section::make('Detail Barang Pesanan')
@@ -187,11 +193,11 @@ class PurchaseOrderResource extends Resource
 
 
                                 Forms\Components\Repeater::make('items')
-                                    ->label('Rincian Pesanan')
+                                    ->label('Rincian Pembelian')
                                     ->schema([
                                         Forms\Components\Hidden::make('product_id'),
                                         Forms\Components\Select::make('supplier_item_id')
-                                            ->label('Nama Produk')
+                                            ->label('Nama Barang')
                                             ->options(fn (callable $get) => SupplierItem::where('supplier_id', $get('../../supplier_id'))->pluck('nama_item', 'id'))
                                             ->disabled()->dehydrated(),
 
@@ -206,7 +212,7 @@ class PurchaseOrderResource extends Resource
                                             ->label('Satuan')
                                             ->disabled()
                                             ->dehydrated(),
-                                        Forms\Components\TextInput::make('price')->label('Harga per Item')->numeric()->prefix('Rp')->disabled()->dehydrated(),
+                                        Forms\Components\TextInput::make('price')->label('Harga Satuan')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                         Forms\Components\TextInput::make('total')->label('Total')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                     ])
                                     ->columns(5)
@@ -358,6 +364,11 @@ class PurchaseOrderResource extends Resource
                     }),
             ])
             ->filters([
+                SelectFilter::make('status')
+                ->options([
+                    'ordered' => 'Ordered',
+                    'completed' => 'Completed',
+                ]),
                 Filter::make('created_at')
                     ->form([
                         DatePicker::make('created_from')
@@ -443,6 +454,21 @@ class PurchaseOrderResource extends Resource
                             ->send();
                     })
                     ->visible(fn(PurchaseOrder $record): bool => $record->status === 'ordered'),
+                
+                 Tables\Actions\Action::make('printFPPB')
+                    ->label('Cetak FPPB')
+                    ->icon('heroicon-o-document-text') // Ikon yang lebih cocok untuk dokumen
+                    ->color('warning') // Warna yang berbeda dari invoice
+                    ->action(function (PurchaseOrder $record): StreamedResponse {
+                        // Pastikan Anda membuat view Blade baru bernama 'invoices.fppb'
+                        $pdf = PDF::loadView('invoices.fppb', compact('record'));
+
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->output();
+                        }, 'FPPB-' . $record->po_number . '.pdf');
+                    })
+                    // Tombol ini harus selalu terlihat (visible) selama data sudah tersimpan
+                    ->visible(true), 
 
                 Tables\Actions\Action::make('printInvoice')
                     ->label('Cetak Invoice')

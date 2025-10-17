@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Filters\SelectFilter;
 
 class ProductResource extends Resource
 {
@@ -32,7 +33,7 @@ class ProductResource extends Resource
                     ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('sku')
-                    ->label('SKU (Kode Barang)')
+                    ->label('Kode Barang')
                     ->unique(ignoreRecord: true)
                     ->readOnly() 
                     ->placeholder('Akan dibuat otomatis setelah disimpan') 
@@ -64,6 +65,13 @@ class ProductResource extends Resource
                     ->required()
                     ->maxLength(255)
                     ->default('pcs'), 
+                Forms\Components\FileUpload::make('image')
+                ->label('Gambar Produk')
+                ->image() // Memastikan hanya file gambar yang bisa diupload
+                ->disk('public')
+                ->directory('product-images') // Menyimpan gambar di storage/app/public/product-images
+                ->maxSize(1024) // Maksimum 1MB
+                ->columnSpanFull(), // Membuat input mengambil lebar penuh
             ]);
     }
 
@@ -71,14 +79,27 @@ class ProductResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image')
+                    ->label('Gambar')
+                    ->disk('public')
+                    ->width(50) // Mengatur lebar thumbnail
+                    ->height(50), // Mengatur tinggi thumbnail
+                Tables\Columns\TextColumn::make('sku')
+                    ->label('Kode')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama Produk')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('sku')
-                    ->label('SKU')
-                    ->searchable(),
+                Tables\Columns\TextColumn::make('unit')
+                    ->label('Satuan'),
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stok Saat Ini')
+                    ->badge() // <-- Tambahkan ini untuk membuatnya seperti label
+                    ->color(fn (Product $record): string => match (true) {
+                        $record->stock < $record->minimum_stock => 'danger', // Merah jika stok < min (termasuk 0)
+                        $record->stock == $record->minimum_stock => 'warning', // Kuning jika stok = min
+                        default => 'success', // Hijau jika stok > min
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('minimum_stock')
                     ->label('Min. Stok')
@@ -87,8 +108,6 @@ class ProductResource extends Resource
                     ->label('Lifetime Penggunaan')
                     ->sortable()
                     ->suffix(' hari'),
-                Tables\Columns\TextColumn::make('unit')
-                    ->label('Satuan'),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Terakhir Update')
                     ->dateTime('d M Y H:i')
@@ -96,7 +115,39 @@ class ProductResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // ===== AWAL PERUBAHAN KODE FILTER =====
+                SelectFilter::make('stock_status')
+                    ->label('Status Stok')
+                    ->options([
+                        'tersedia' => 'Stok Tersedia',
+                        'minimal' => 'Stok Minimal',
+                        'menipis' => 'Stok Menipis',
+                        'habis' => 'Stok Habis',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'],
+                            function (Builder $query, $status): Builder {
+                                if ($status === 'tersedia') {
+                                    // Stok saat ini > Stok minimum
+                                    return $query->whereRaw('stock > minimum_stock');
+                                }
+                                if ($status === 'minimal') {
+                                    // Stok saat ini = Stok minimum
+                                    return $query->whereRaw('stock = minimum_stock');
+                                }
+                                if ($status === 'menipis') {
+                                    // Stok saat ini < Stok minimum DAN > 0
+                                    return $query->whereRaw('stock < minimum_stock')->where('stock', '>', 0);
+                                }
+                                if ($status === 'habis') {
+                                    return $query->where('stock', '<=', 0);
+                                }
+                                return $query;
+                            }
+                        );
+                    })
+                // ===== AKHIR PERUBAHAN KODE FILTER =====
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

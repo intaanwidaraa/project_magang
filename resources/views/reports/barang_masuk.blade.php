@@ -181,13 +181,13 @@
                 <td style="width: 50%;">
                     <p>Dibuat Oleh,</p>
                     <div class="signature-space"></div>
-                    <p style="text-decoration: underline;"><strong>( Nama Admin Sparepart )</strong></p>
+                    <p style="text-decoration: underline;"><strong>M. N. Aef</strong></p>
                     <p>Adm. Sparepart</p>
                 </td>
                 <td style="width: 50%;">
                     <p>Diketahui Oleh,</p>
                     <div class="signature-space"></div>
-                    <p style="text-decoration: underline;"><strong>( Nama Manajer )</strong></p>
+                    <p style="text-decoration: underline;"><strong>Gunawan</strong></p>
                     <p>Mgr. Engineering</p>
                 </td>
             </tr>
