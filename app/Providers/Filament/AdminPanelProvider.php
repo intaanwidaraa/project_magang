@@ -31,7 +31,6 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Blue,
             ])
-
             // --- TAMBAHKAN BARIS INI ---
             ->brandName('Sistem Gudang dan Persediaan Sparepart') 
             ->favicon(asset('images/Logo_MAS.png'))

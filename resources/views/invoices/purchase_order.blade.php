@@ -6,77 +6,82 @@
     <style>
         body {
             font-family: 'Helvetica', sans-serif;
-            font-size: 12px;
+            font-size: 9px;
             color: #333;
-            background-color: #fff;
-            margin: 0;
         }
-        .invoice-box {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 30px;
-            border: 1px solid #eee;
-            box-shadow: 0 0 10px rgba(0, 0, 0, .15);
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
         }
-        table {
+        .header-table {
             width: 100%;
-            line-height: inherit;
-            text-align: left;
-            border-collapse: collapse;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
         }
-        .top-table td {
-            padding: 5px;
+        .header-table td {
             vertical-align: middle;
         }
         .header-info {
             text-align: center;
         }
-        .header-info h1 { margin: 0; font-size: 20px; word-break: keep-all; white-space: nowrap; }
+        .header-info h1 { margin: 0; font-size: 20px; }
         .header-info p { margin: 2px 0; font-size: 11px; }
-        .line { border-top: 2px solid #333; margin: 15px 0; }
-        .text-right { text-align: right; }
 
-        /* Gaya Tabel Item */
+        .report-title h2 {
+            text-align: center;
+            font-size: 16px;
+            margin: 20px 0 5px 0;
+            text-transform: uppercase;
+        }
+        .report-title p {
+            text-align: center;
+            font-size: 12px;
+            margin: 0 0 20px 0;
+        }
+        
         .items-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 20px;
         }
         .items-table th, .items-table td {
-            padding: 10px 12px;
-            border: 1px solid #e0e0e0;
-            text-align: left !important; /* [Perubahan] Memaksa semua rata kiri */
+            padding: 5px;
+            border: 1px solid #ccc;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
         }
         .items-table thead th {
-            background-color: #3f51b5;
+            background-color: #4A5568;
             color: white;
             font-weight: bold;
-            text-transform: uppercase;
-            font-size: 11px;
+            text-align: center;
         }
-        .items-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        
-        .total-section {
-            margin-top: 20px;
-            text-align: right;
-        }
-        .total-section strong {
-            font-size: 16px;
+        .items-table tfoot td {
             font-weight: bold;
+            background-color: #f2f2f2;
         }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+
+        .info-section {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .info-section td {
+            line-height: 1.5; /* Menambah jarak antar baris */
+        }
+
         .signature-table {
             width: 100%;
-            margin-top: 50px;
+            margin-top: 40px;
             text-align: center;
             page-break-inside: avoid;
         }
-        .signature-table p {
-            margin: 0;
-            line-height: 1.5;
-        }
-        .signature-space {
-            height: 60px;
-        }
+        .signature-table p { margin: 0; line-height: 1.5; }
+        .signature-space { height: 60px; }
     </style>
 </head>
 <body>
@@ -85,58 +90,73 @@
     $ttdPath  = public_path('images/ttd.jpg'); 
 @endphp
 
-<div class="invoice-box">
-    <table class="top-table">
+<div class="container">
+    <table class="header-table">
         <tr>
-            <td style="width: 20%;"> @if(file_exists($logoPath))
-                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" style="width: 100%; max-width: 120px;">
+            <td style="width: 20%;">
+                @if(file_exists($logoPath))
+                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" style="max-width: 100px;">
                 @endif
             </td>
-            <td class="header-info" style="width: 60%;"> <h1>PT MAKMUR ARTHA SEJAHTERA</h1>
+            <td class="header-info" style="width: 60%;">
+                <h1>PT MAKMUR ARTHA SEJAHTERA</h1>
                 <p>Jl. Ki Ageng Tapa Blok Nambo No.168, Astapada, Kec. Tengah Tani, Kabupaten Cirebon, Jawa Barat 45153</p>
                 <p>Telp. (0231) 245206, (0231) 245207</p>
             </td>
-            <td style="width: 20%;"></td> </tr>
+            <td style="width: 20%;"></td>
+        </tr>
     </table>
-    <div class="line"></div>
     
-    <h2 style="text-align: center; color: #3f51b5; margin-bottom: 25px;">LAPORAN PENERIMAAN BARANG SPAREPART</h2>
-    <table>
+    <div class="report-title">
+        <h2>Laporan Penerimaan Barang Sparepart</h2>
+    </div>
+
+    <table class="info-section">
         <tr>
-            <td style="width: 60%;">
+            <td style="width: 60%; vertical-align: top;">
                 <strong>Informasi Pemasok:</strong><br>
                 {{ $record->supplier->name ?? '-' }}<br>
                 {{ $record->supplier->address ?? 'Alamat tidak tersedia' }}<br>
                 {{ $record->supplier->phone_number ?? 'Telepon tidak tersedia' }}
             </td>
-            <td class="text-right" style="vertical-align: top;">
+            <td style="width: 40%; text-align: right; vertical-align: top;">
                 <strong>No. PO:</strong> {{ $record->po_number }}<br>
-                <strong>Tanggal:</strong> {{ $record->created_at->translatedFormat('d F Y') }}
+                <strong>Tanggal Pemesanan:</strong> {{ $record->created_at->translatedFormat('d F Y') }}<br>
+                @if($record->status === 'completed')
+                    <strong>Tanggal Penerimaan:</strong> {{ $record->updated_at->translatedFormat('d F Y') }}
+                @endif
             </td>
-        </tr>
+            </tr>
     </table>
 
-    <p><strong>Detail Pembelian:</strong></p>
     <table class="items-table">
         <thead>
             <tr>
-                <th>Nama Produk</th>
-                <th>Jumlah</th> <th>Satuan</th>
-                <th>Harga Satuan</th> <th>Total Harga</th> </tr>
+                <th>Nama Barang</th>
+                <th style="width: 10%;" class="text-center">Jumlah</th>
+                <th style="width: 10%;" class="text-center">Satuan</th>
+                <th style="width: 20%;" class="text-center">Harga Satuan</th>
+                <th style="width: 20%;" class="text-center">Total Harga</th>
+            </tr>
         </thead>
         <tbody>
             @foreach ($record->items as $item)
             <tr>
                 <td>{{ \App\Models\SupplierItem::find($item['supplier_item_id'])->nama_item ?? 'Produk Dihapus' }}</td>
-                <td>{{ $item['quantity'] }}</td> <td>{{ $item['unit'] ?? 'pcs' }}</td>
-                <td>Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td> <td>Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}</td> </tr>
+                <td class="text-center">{{ $item['quantity'] }}</td>
+                <td class="text-center">{{ $item['unit'] ?? 'pcs' }}</td>
+                <td class="text-right">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
+                <td class="text-right">Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}</td>
+            </tr>
             @endforeach
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" class="text-right"><strong>Total Pembelian</strong></td>
+                <td class="text-right"><strong>Rp {{ number_format($record->grand_total, 0, ',', '.') }}</strong></td>
+            </tr>
+        </tfoot>
     </table>
-
-    <div class="total-section">
-        <strong>Total Pembelian: Rp {{ number_format($record->grand_total, 0, ',', '.') }}</strong>
-    </div>
 
     <table class="signature-table">
         <tr>

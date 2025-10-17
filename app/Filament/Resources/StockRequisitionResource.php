@@ -38,6 +38,10 @@ class StockRequisitionResource extends Resource
                                 Forms\Components\TextInput::make('requester_name')
                                     ->label('Nama Pengambil')
                                     ->required(),
+                                Forms\Components\DatePicker::make('created_at')
+                                    ->label('Tanggal Pengambilan')
+                                    ->required()
+                                    ->default(now()),
                                 Forms\Components\Select::make('department')
                                     ->label('Bagian Pengambil')
                                     ->options([
@@ -51,8 +55,6 @@ class StockRequisitionResource extends Resource
                                         'lainnya' => 'Lainnya',
                                     ])
                                     ->required(),
-                                
-                                // --- PENAMBAHAN FORM SHIFT ---
                                 Forms\Components\Select::make('shift')
                                     ->label('Shift')
                                     ->options([
@@ -61,9 +63,7 @@ class StockRequisitionResource extends Resource
                                         '3' => 'Shift 3',
                                     ])
                                     ->required(),
-                                // --- AKHIR PENAMBAHAN ---
-
-                            ])->columns(3), // <-- Ubah menjadi 3 agar sejajar 
+                            ])->columns(2), 
 
                         Forms\Components\Section::make('Daftar Barang')
                             ->schema([
@@ -120,12 +120,8 @@ class StockRequisitionResource extends Resource
                             ]),
                     ])->columnSpan(1), 
                 ]),
-            ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
+            ]);}public static function table(Table $table): Table
+    {return $table
             ->columns([
                 Tables\Columns\TextColumn::make('requester_name')->label('Nama Pengambil')->searchable(),
                 Tables\Columns\TextColumn::make('department')->label('Bagian')->sortable(),
@@ -134,7 +130,12 @@ class StockRequisitionResource extends Resource
                     'pending' => 'warning',
                     'completed' => 'success',
                 }),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+                 // --- PERUBAHAN DI SINI ---
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Tanggal') // Mengubah label agar lebih sesuai
+                    ->date('d M Y')     
+                    ->sortable(),
+                // --- AKHIR PERUBAHAN ---
             ])
             ->filters([
                 //

@@ -2,17 +2,15 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Stok Harian</title>
+    <title>Laporan Stok Persediaan</title>
     <style>
         body {
             font-family: 'Helvetica', sans-serif;
-            font-size: 11px;
+            font-size: 9px; /* Ukuran font disamakan */
             color: #333;
-            background-color: #fff;
-            margin: 0;
         }
         .container {
-            width: 100%;
+            max-width: 900px; /* Lebar maksimum disamakan */
             margin: 0 auto;
             padding: 20px;
         }
@@ -49,19 +47,22 @@
             margin-top: 20px;
         }
         .items-table th, .items-table td {
-            padding: 8px;
+            padding: 5px; /* Padding disamakan agar tidak terlalu lebar */
             border: 1px solid #ccc;
             text-align: left;
+            vertical-align: middle; /* vertical-align ditambahkan */
+            word-wrap: break-word; /* word-wrap ditambahkan */
         }
         .items-table thead th {
-            background-color: #4A5568; /* Warna header biru gelap */
+            background-color: #4A5568;
             color: white;
             font-weight: bold;
             text-align: center;
         }
-        .items-table tbody tr:nth-child(even) {
+        /* Menghapus background belang-belang agar sama */
+        /* .items-table tbody tr:nth-child(even) {
             background-color: #f9f9f9;
-        }
+        } */
         .items-table tfoot td {
             font-weight: bold;
             background-color: #f2f2f2;
@@ -81,7 +82,6 @@
 </head>
 <body>
     @php
-        // Logika untuk mengambil path logo, agar bisa tampil di PDF
         $logoPath = public_path('images/Logo_MAS.png'); 
     @endphp
 
@@ -111,12 +111,12 @@
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
-                    <th>Nama Produk</th>
-                    <th style="width: 10%;" class="text-center">Satuan</th>
-                    <th style="width: 15%;" class="text-center">Stok Awal</th>
-                    <th style="width: 15%;" class="text-center">Masuk</th>
-                    <th style="width: 15%;" class="text-center">Keluar</th>
-                    <th style="width: 15%;" class="text-center">Stok Akhir</th>
+                    <th>Nama Barang</th>
+                    <th style="width: 10%;">Satuan</th>
+                    <th style="width: 15%;">Stok Awal</th>
+                    <th style="width: 15%;">Masuk</th>
+                    <th style="width: 15%;">Keluar</th>
+                    <th style="width: 15%;">Stok Akhir</th>
                 </tr>
             </thead>
             <tbody>
@@ -167,13 +167,13 @@
                 <td style="width: 50%;">
                     <p>Dibuat Oleh,</p>
                     <div class="signature-space"></div>
-                    <p style="text-decoration: underline;"><strong>( Nama Admin Sparepart )</strong></p>
+                    <p style="text-decoration: underline;"><strong>M. N. Aef</strong></p>
                     <p>Adm. Sparepart</p>
                 </td>
                 <td style="width: 50%;">
                     <p>Diketahui Oleh,</p>
                     <div class="signature-space"></div>
-                    <p style="text-decoration: underline;"><strong>( Nama Manajer )</strong></p>
+                    <p style="text-decoration: underline;"><strong>Gunawan</strong></p>
                     <p>Mgr. Engineering</p>
                 </td>
             </tr>

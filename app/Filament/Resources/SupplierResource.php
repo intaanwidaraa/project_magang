@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Filament\Resources\SupplierResource\RelationManagers\ItemsRelationManager; 
 
 class SupplierResource extends Resource
 {
@@ -52,6 +53,7 @@ class SupplierResource extends Resource
                             ->preload()
                             ->reactive() 
                             ->required()
+                            ->hidden(fn (string $operation): bool => $operation === 'view')
                             ->afterStateUpdated(function ($state, callable $set) {
     
                                 $product = Product::find($state);
@@ -88,7 +90,7 @@ class SupplierResource extends Resource
 
                         Forms\Components\TextInput::make('nama_item')
                             ->label('Nama Item (Versi Supplier)')
-                            ->helperText('Otomatis terisi, namun bisa diubah jika perlu.')
+                            ->helperText(fn (string $operation): ?string => $operation !== 'view' ? 'Otomatis terisi, namun bisa diubah jika perlu.' : null)
                             ->required(),
 
                         Forms\Components\TextInput::make('harga')
@@ -99,7 +101,8 @@ class SupplierResource extends Resource
                     ])
                     ->columns(3) 
                     ->columnSpanFull()
-                    ->addActionLabel('Tambah Barang Pemasok'),
+                    ->addActionLabel('Tambah Barang Pemasok')
+                    ->visibleOn('create'),
             ]);
     }
 
@@ -137,7 +140,7 @@ class SupplierResource extends Resource
     public static function getRelations(): array
     {
         return [
-            
+            ItemsRelationManager::class, // <-- Daftarkan di sini
         ];
     }
 
