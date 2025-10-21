@@ -39,7 +39,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
     protected static string $view = 'filament.pages.laporan-terpusat';
-
     protected static ?string $navigationGroup = 'Laporan';
     protected static ?string $navigationLabel = 'Laporan Terpusat';
     protected static ?string $title = 'Laporan Terpusat';
@@ -69,6 +68,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->options([
                                 'stok' => 'Laporan Stok',
                                 'barang_masuk' => 'Laporan Barang Masuk',
+                                'keluar' => 'Laporan Barang Keluar',
                             ])
                             ->live()
                             ->columnSpan(3),
@@ -165,19 +165,21 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                     }),
                                 
                                 FormAction::make('cetakPdf')
-                                    ->label('Cetak PDF')
-                                    ->button()
-                                    ->color('danger')
-                                    ->action(function (): StreamedResponse {
-                                        $jenisLaporan = $this->data['jenisLaporan'] ?? 'stok';
-                                        $records = $this->getFilteredTableQuery()->get();
-                                        $data = $this->form->getState();
-                                        $viewName = 'reports.' . ($jenisLaporan === 'stok' ? 'stok' : 'barang_masuk');
-                                        
-                                        $pdf = Pdf::loadView($viewName, compact('records', 'data'));
-                                        
-                                        return response()->streamDownload(fn() => print($pdf->output()), 'laporan-' . $jenisLaporan . '.pdf');
-                                    }),
+                                ->label('Cetak PDF')
+                                ->button()
+                                ->color('danger')
+                                ->action(function (): StreamedResponse {
+                                    $jenisLaporan = $this->data['jenisLaporan'] ?? 'stok';
+                                    $records = $this->getFilteredTableQuery()->limit(100)->get(); 
+                                    $data = $this->form->getState();
+                                    $viewName = 'reports.' . ($jenisLaporan === 'stok' ? 'stok' : 'barang_masuk');
+                                    
+                                    $pdf = Pdf::loadView($viewName, compact('records', 'data'));
+                                    
+                                    return response()->streamDownload(function () use ($pdf) {
+                                        echo $pdf->output();
+                                    }, 'laporan-' . $jenisLaporan . '.pdf');
+                                }),
 
                                 FormAction::make('tampilkan')
                                     ->label('Tampilkan')

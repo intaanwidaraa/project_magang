@@ -17,9 +17,7 @@ class Supplier extends Model
         return $this->hasMany(PurchaseOrder::class);
     }
 
-    /**
-     * Get all of the items for the Supplier.
-     */
+    
     public function items(): HasMany
     {
         return $this->hasMany(SupplierItem::class);

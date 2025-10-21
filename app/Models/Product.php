@@ -12,7 +12,7 @@ class Product extends Model
 
     protected $guarded = [];
 
-    // --- MULAI PENAMBAHAN ---
+   
     /**
      * The "booted" method of the model.
      *
@@ -21,16 +21,12 @@ class Product extends Model
     protected static function booted(): void
     {
         static::creating(function (Product $product) {
-            // Cek jika SKU belum diisi, maka buat otomatis
             if (empty($product->sku)) {
-                // Ambil 3 huruf pertama dari nama produk
                 $prefix = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $product->name), 0, 3));
-                // Tambahkan ID unik berdasarkan waktu
                 $product->sku = $prefix . '-' . time();
             }
         });
     }
-    // --- SELESAI PENAMBAHAN ---
 
     public function stockMovements(): HasMany
     {

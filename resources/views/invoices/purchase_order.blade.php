@@ -71,7 +71,7 @@
             margin-bottom: 20px;
         }
         .info-section td {
-            line-height: 1.5; /* Menambah jarak antar baris */
+            line-height: 1.5; 
         }
 
         .signature-table {

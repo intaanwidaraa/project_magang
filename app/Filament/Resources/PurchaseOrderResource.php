@@ -43,8 +43,8 @@ class PurchaseOrderResource extends Resource
                         Forms\Components\Section::make('Informasi Pembelian')
                             ->schema([
                                 Forms\Components\TextInput::make('po_number')
-                                    ->label('Nomor PO')
-                                    ->placeholder('Masukkan nomor PO secara manual') 
+                                    ->label('Nomor FPPB')
+                                    ->placeholder('Masukkan nomor secara manual') 
                                     ->required()
                                     ->unique(ignoreRecord: true), 
                                 Forms\Components\DatePicker::make('created_at')
@@ -200,7 +200,10 @@ class PurchaseOrderResource extends Resource
                                             ->options(fn (callable $get) => SupplierItem::where('supplier_id', $get('../../supplier_id'))->pluck('nama_item', 'id'))
                                             ->disabled()->dehydrated(),
 
-                                        Forms\Components\TextInput::make('quantity')->label('Jumlah')->numeric()->reactive()
+                                        Forms\Components\TextInput::make('quantity')
+                                            ->label('Jumlah')
+                                            ->numeric()
+                                            ->live(onBlur: true)
                                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                                 $set('total', ($state ?? 0) * ($get('price') ?? 0));
                                                 $allItems = $get('../../items');
@@ -211,7 +214,21 @@ class PurchaseOrderResource extends Resource
                                             ->label('Satuan')
                                             ->disabled()
                                             ->dehydrated(),
-                                        Forms\Components\TextInput::make('price')->label('Harga Satuan')->numeric()->prefix('Rp')->disabled()->dehydrated(),
+                                        Forms\Components\TextInput::make('price')
+                                            ->label('Harga Satuan')
+                                            ->numeric()
+                                            ->prefix('Rp')
+                                            ->dehydrated()
+                                            ->live(onBlur: true)
+                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                                
+                                                $set('total', ($state ?? 0) * ($get('quantity') ?? 0));
+                                                
+                                                
+                                                $allItems = $get('../../items');
+                                                $grandTotal = collect($allItems)->sum(fn($item) => $item['total'] ?? 0);
+                                                $set('../../grand_total', $grandTotal);
+                                            }),
                                         Forms\Components\TextInput::make('total')->label('Total')->numeric()->prefix('Rp')->disabled()->dehydrated(),
                                     ])
                                     ->columns(5)
@@ -266,8 +283,12 @@ class PurchaseOrderResource extends Resource
                     ->date('d M Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
-                Tables\Columns\TextColumn::make('po_number')->label('Nomor PO')->searchable(),
-                Tables\Columns\TextColumn::make('supplier.name')->label('Pemasok')->searchable(),
+                Tables\Columns\TextColumn::make('po_number')
+                    ->label('Nomor FPPB')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('supplier.name')
+                ->label('Pemasok')
+                ->searchable(),
                 Tables\Columns\TextColumn::make('items')
                     ->label('Nama Barang')
                     ->listWithLineBreaks()

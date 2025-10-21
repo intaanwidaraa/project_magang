@@ -4,10 +4,10 @@
     <title>FPPB - {{ $record->po_number }}</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <style>
-        /* CSS untuk Landscape dan Margin */
+       
         @page {
             size: A4 landscape;
-            margin: 10mm 10mm 10mm 10mm; /* Atur margin agar konten cukup */
+            margin: 10mm 10mm 10mm 10mm; 
         }
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +20,7 @@
             width: 100%;
         }
 
-        /* HEADER */
+        
         .header {
             width: 100%;
             display: table;
@@ -48,7 +48,7 @@
             margin-right: 10px;
         }
         .logo img {
-            height: 40px; /* Sesuaikan tinggi logo */
+            height: 40px; 
             width: auto;
         }
         .doc-info table {
@@ -77,39 +77,38 @@
             font-size: 13pt;
         }
 
-        /* ITEM TABLE */
+        
         .item-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 10px;
-            /* Tambahkan table-layout: fixed untuk kontrol lebar yang lebih baik */
             table-layout: fixed; 
         }
         .item-table th, .item-table td {
             border: 1px solid #000;
             padding: 3px;
             text-align: center;
-            vertical-align: middle; /* Ganti top ke middle */
+            vertical-align: middle; 
             height: 18px; 
-            line-height: 1.2; /* Merapikan teks dalam sel */
+            line-height: 1.2; 
         }
         .item-table th {
             background-color: #f2f2f2;
             font-size: 8pt;
-            white-space: normal; /* Izinkan wrapping teks di header */
+            white-space: normal; 
         }
         
-        /* --- LEBAR KOLOM DISESUAIKAN UNTUK KETERLIHATAN --- */
+        
         .item-table .col-no { width: 3%; }
         .item-table .col-coa { width: 4%; }
         .item-table .col-sku { width: 7%; }
-        .item-table .col-name { width: 17%; text-align: left; } /* Perlebar sedikit */
+        .item-table .col-name { width: 17%; text-align: left; } 
         .item-table .col-qty, .item-table .col-sat, .item-table .col-stock { width: 4%; }
-        .item-table .col-price, .item-table .col-total { width: 8.5%; text-align: right !important; } /* Perlebar sedikit dan pastikan rata kanan */
+        .item-table .col-price, .item-table .col-total { width: 8.5%; text-align: right !important; } 
         .item-table .col-keterangan { width: 15%; font-size: 7.5pt; text-align: left; }
-        .item-table .col-last-buy { width: 9%; } /* Perlebar sedikit */
+        .item-table .col-last-buy { width: 9%; } 
         .item-table .col-check, .item-table .col-cash, .item-table .col-noncash, .item-table .col-urgent { width: 3%; }
-        /* --- AKHIR PENYESUAIAN LEBAR KOLOM --- */
+       
 
 
         .total-row td {
@@ -130,7 +129,7 @@
              text-align: right;
         }
 
-        /* SIGNATURE TABLE */
+        
         .sign-table {
             width: 100%;
             border-collapse: collapse;

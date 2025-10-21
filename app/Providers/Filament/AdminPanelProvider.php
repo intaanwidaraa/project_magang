@@ -31,11 +31,10 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Blue,
             ])
-            // --- TAMBAHKAN BARIS INI ---
             ->brandName('Sistem Gudang dan Persediaan Sparepart') 
             ->favicon(asset('images/Logo_MAS.png'))
             ->brandLogoHeight('3rem') 
-            ->brandLogo(asset('images/Logo_MAS.png')) // Ganti 'logo-anda.png' dengan nama file Anda
+            ->brandLogo(asset('images/Logo_MAS.png')) 
 
             
 

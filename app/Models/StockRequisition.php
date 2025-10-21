@@ -12,7 +12,7 @@ class StockRequisition extends Model
 
     protected $guarded = [];
 
-    // TAMBAHKAN PROPERTI INI
+   
     /**
      * The attributes that should be cast.
      *
@@ -22,7 +22,7 @@ class StockRequisition extends Model
         'items' => 'array',
     ];
 
-    public function stockMovements(): MorphMany // <-- Tambahkan method ini
+    public function stockMovements(): MorphMany 
     {
         return $this->morphMany(StockMovement::class, 'reference');
     }
