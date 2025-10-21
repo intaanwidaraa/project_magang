@@ -22,17 +22,13 @@ class SupplierItem extends Model
         'harga',
     ];
 
-    /**
-     * Get the supplier that owns the item.
-     */
+    
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
 
-    /**
-     * Get the master product associated with the item.
-     */
+    
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

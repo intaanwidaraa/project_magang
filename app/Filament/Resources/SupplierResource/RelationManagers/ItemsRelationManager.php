@@ -15,8 +15,6 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
-
-    // Penyesuaian label agar lebih deskriptif di UI
     protected static ?string $recordTitleAttribute = 'nama_item';
     protected static ?string $modelLabel = 'Barang Pemasok';
     protected static ?string $pluralModelLabel = 'Barang-barang Pemasok';
@@ -25,10 +23,9 @@ class ItemsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                // Input untuk memilih dari produk master yang sudah ada
                 Forms\Components\Select::make('product_id')
                     ->label('Pilih Produk dari Gudang')
-                    ->relationship('product', 'name') // Mengambil data dari relasi
+                    ->relationship('product', 'name') 
                     ->searchable()
                     ->preload()
                     ->reactive()

@@ -6,11 +6,11 @@
     <style>
         body {
             font-family: 'Helvetica', sans-serif;
-            font-size: 9px; /* Ukuran font disamakan */
+            font-size: 9px; 
             color: #333;
         }
         .container {
-            max-width: 900px; /* Lebar maksimum disamakan */
+            max-width: 900px; 
             margin: 0 auto;
             padding: 20px;
         }
@@ -47,11 +47,11 @@
             margin-top: 20px;
         }
         .items-table th, .items-table td {
-            padding: 5px; /* Padding disamakan agar tidak terlalu lebar */
+            padding: 5px; 
             border: 1px solid #ccc;
             text-align: left;
-            vertical-align: middle; /* vertical-align ditambahkan */
-            word-wrap: break-word; /* word-wrap ditambahkan */
+            vertical-align: middle; 
+            word-wrap: break-word; 
         }
         .items-table thead th {
             background-color: #4A5568;
@@ -59,10 +59,7 @@
             font-weight: bold;
             text-align: center;
         }
-        /* Menghapus background belang-belang agar sama */
-        /* .items-table tbody tr:nth-child(even) {
-            background-color: #f9f9f9;
-        } */
+        
         .items-table tfoot td {
             font-weight: bold;
             background-color: #f2f2f2;

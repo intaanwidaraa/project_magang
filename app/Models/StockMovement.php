@@ -13,17 +13,13 @@ class StockMovement extends Model
 
     protected $guarded = [];
 
-    /**
-     * Mendapatkan data produk yang terkait dengan pergerakan ini.
-     */
+    
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Mendapatkan model referensi (PurchaseOrder atau StockRequisition).
-     */
+   
     public function reference(): MorphTo
     {
         return $this->morphTo();

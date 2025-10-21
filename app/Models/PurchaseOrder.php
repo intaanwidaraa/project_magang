@@ -13,7 +13,7 @@ class PurchaseOrder extends Model
 
     protected $guarded = [];
 
-    // TAMBAHKAN PROPERTI INI
+    
     /**
      * The attributes that should be cast.
      *

@@ -39,7 +39,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
 
     protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
     protected static string $view = 'filament.pages.laporan-terpusat';
-
     protected static ?string $navigationGroup = 'Laporan';
     protected static ?string $navigationLabel = 'Laporan Terpusat';
     protected static ?string $title = 'Laporan Terpusat';
@@ -69,6 +68,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->options([
                                 'stok' => 'Laporan Stok',
                                 'barang_masuk' => 'Laporan Barang Masuk',
+                                'keluar' => 'Laporan Barang Keluar',
                             ])
                             ->live()
                             ->columnSpan(3),
@@ -106,7 +106,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                         Select::make('filterPeriode')
                             ->label('Filter Berdasarkan')
                             ->options([
-                                // [1] PENAMBAHAN OPSI BARU
                                 'rentang_tanggal' => 'Rentang Tanggal',
                                 'harian' => 'Harian',
                                 'bulanan' => 'Bulanan',
@@ -117,16 +116,12 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'barang_masuk')
                             ->columnSpan(3),
 
-                        
-
-                        // [2] UBAH LOGIKA VISIBILITY DATEPICKER TUNGGAL
                         DatePicker::make('tanggal')
                             ->label('Pilih Tanggal')
                             ->default(now())
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'stok' || ($get('jenisLaporan') === 'barang_masuk' && in_array($get('filterPeriode'), ['harian', 'bulanan', 'tahunan'])))
                             ->columnSpan(3),
                         
-                        // [3] TAMBAHKAN GRID UNTUK RENTANG TANGGAL
                         Grid::make(2)
                             ->schema([
                                 DatePicker::make('tanggal_mulai')
@@ -170,19 +165,21 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                     }),
                                 
                                 FormAction::make('cetakPdf')
-                                    ->label('Cetak PDF')
-                                    ->button()
-                                    ->color('danger')
-                                    ->action(function (): StreamedResponse {
-                                        $jenisLaporan = $this->data['jenisLaporan'] ?? 'stok';
-                                        $records = $this->getFilteredTableQuery()->get();
-                                        $data = $this->form->getState();
-                                        $viewName = 'reports.' . ($jenisLaporan === 'stok' ? 'stok' : 'barang_masuk');
-                                        
-                                        $pdf = Pdf::loadView($viewName, compact('records', 'data'));
-                                        
-                                        return response()->streamDownload(fn() => print($pdf->output()), 'laporan-' . $jenisLaporan . '.pdf');
-                                    }),
+                                ->label('Cetak PDF')
+                                ->button()
+                                ->color('danger')
+                                ->action(function (): StreamedResponse {
+                                    $jenisLaporan = $this->data['jenisLaporan'] ?? 'stok';
+                                    $records = $this->getFilteredTableQuery()->limit(100)->get(); 
+                                    $data = $this->form->getState();
+                                    $viewName = 'reports.' . ($jenisLaporan === 'stok' ? 'stok' : 'barang_masuk');
+                                    
+                                    $pdf = Pdf::loadView($viewName, compact('records', 'data'));
+                                    
+                                    return response()->streamDownload(function () use ($pdf) {
+                                        echo $pdf->output();
+                                    }, 'laporan-' . $jenisLaporan . '.pdf');
+                                }),
 
                                 FormAction::make('tampilkan')
                                     ->label('Tampilkan')
@@ -225,16 +222,14 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             $tanggalCarbon = Carbon::parse($tanggal);
             $productId = $this->data['product_id'] ?? null;
 
-            // 1. Filter Produk
             $query->when($productId, fn($q) => $q->where('id', $productId));
 
-            // 2. Filter Pergerakan Stok berdasarkan Periode
             $query->with(['stockMovements' => function ($q) use ($tanggalCarbon, $filterPeriodeStok) {
                 switch ($filterPeriodeStok) {
                     case 'bulanan':
                         $q->whereMonth('created_at', $tanggalCarbon->month)->whereYear('created_at', $tanggalCarbon->year);
                         break;
-                    default: // 'harian'
+                    default: 
                         $q->whereDate('created_at', $tanggalCarbon);
                         break;
                 }
@@ -250,7 +245,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             $kolomTanggal = 'created_at';
             
             switch ($filterPeriode) {
-                // [4] TAMBAHKAN LOGIKA UNTUK RENTANG TANGGAL
                 case 'rentang_tanggal':
                     $tanggalMulai = $this->data['tanggal_mulai'] ?? null;
                     $tanggalAkhir = $this->data['tanggal_akhir'] ?? null;
@@ -265,7 +259,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                     $tanggalCarbon = Carbon::parse($this->data['tanggal'] ?? now());
                     $query->whereYear($kolomTanggal, $tanggalCarbon->year);
                     break;
-                default: // Harian
+                default: 
                     $tanggalCarbon = Carbon::parse($this->data['tanggal'] ?? now());
                     $query->whereDate($kolomTanggal, $tanggalCarbon);
                     break;
@@ -297,26 +291,22 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                     ->state(function (Product $record) {
                         $masukHariIni = $record->stockMovements->where('type', 'in')->sum('quantity');
                         $keluarHariIni = $record->stockMovements->where('type', 'out')->sum('quantity');
-                        // Hanya mengembalikan angka, tanpa satuan
                         return ($record->stock - $masukHariIni + $keluarHariIni); 
                     })
                     ->alignRight(),
                     
                 TextColumn::make('masuk')
                     ->label('Masuk')
-                    // Hanya mengembalikan angka, tanpa satuan
                     ->state(fn (Product $record) => $record->stockMovements->where('type', 'in')->sum('quantity'))
                     ->alignRight(),
                     
                 TextColumn::make('keluar')
                     ->label('Keluar')
-                    // Hanya mengembalikan angka, tanpa satuan
                     ->state(fn (Product $record) => $record->stockMovements->where('type', 'out')->sum('quantity'))
                     ->alignRight(),
                     
                 TextColumn::make('stock')
                     ->label('Stok Akhir')
-                    // Hanya mengembalikan angka, tanpa satuan
                     ->state(fn(Product $record) => $record->stock)
                     ->sortable()
                     ->alignRight(),
@@ -344,7 +334,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                     ->listWithLineBreaks()
                     ->state(fn (PurchaseOrder $record): array => collect($record->items)->map(fn($item) => 'Rp ' . number_format($item['price'] ?? 0, 0, ',', '.'))->all()),
                 TextColumn::make('grand_total')
-                    ->label('Total Pesanan') // Label diubah agar lebih jelas
+                    ->label('Total Pesanan') 
                     ->numeric(decimalPlaces: 0, decimalSeparator: ',', thousandsSeparator: '.')
                     ->prefix('Rp ')
                     ->alignEnd()
@@ -356,10 +346,10 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                 TextColumn::make('payment_method')->label('Metode Pembayaran')->badge(),
                 TextColumn::make('status')
                     ->label('Status')
-                    ->badge() // Menampilkan status sebagai badge (seperti "cash" atau "po")
+                    ->badge() 
                     ->color(fn (string $state): string => match ($state) {
-                        'ordered' => 'warning', // Kuning untuk ordered
-                        'completed' => 'success', // Hijau untuk completed
+                        'ordered' => 'warning', 
+                        'completed' => 'success', 
                         default => 'secondary',
                     }),
                 TextColumn::make('supplier.name')->label('Supplier')->searchable(),
@@ -376,8 +366,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
         return match ($this->data['jenisLaporan'] ?? 'stok') {
             'barang_masuk' => [
                 Filter::make('supplier')->form([ Select::make('supplier_id')->label('Pemasok')->options(Supplier::query()->pluck('name', 'id'))->searchable(), ])->query(function (Builder $query, array $data): Builder { return $query->when( $data['supplier_id'] ?? null, fn(Builder $query, $supplierId): Builder => $query->where('supplier_id', '=', $supplierId) ); }),
-                
-                // === FILTER STATUS TELAH DIHAPUS DARI SINI ===
                 
                 Filter::make('created_at')->form([ DatePicker::make('created_from')->label('Dari Tanggal'), DatePicker::make('created_until')->label('Sampai Tanggal'), ])->query(function (Builder $query, array $data): Builder { return $query->when( $data['created_from'] ?? null, fn(Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date), )->when( $data['created_until'] ?? null, fn(Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date), ); }),
             

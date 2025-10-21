@@ -17,9 +17,7 @@ use Filament\Tables\Filters\SelectFilter;
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-archive-box';
-
     protected static ?string $navigationLabel = 'Produk (Barang)';
     protected static ?string $modelLabel = 'Produk ';
     protected static ?string $pluralModelLabel = 'Produk ';
@@ -66,12 +64,12 @@ class ProductResource extends Resource
                     ->maxLength(255)
                     ->default('pcs'), 
                 Forms\Components\FileUpload::make('image')
-                ->label('Gambar Produk')
-                ->image() // Memastikan hanya file gambar yang bisa diupload
-                ->disk('public')
-                ->directory('product-images') // Menyimpan gambar di storage/app/public/product-images
-                ->maxSize(1024) // Maksimum 1MB
-                ->columnSpanFull(), // Membuat input mengambil lebar penuh
+                    ->label('Gambar Produk')
+                    ->image() 
+                    ->disk('public')
+                    ->directory('product-images') 
+                    ->maxSize(1024) 
+                    ->columnSpanFull(), 
             ]);
     }
 
@@ -82,8 +80,8 @@ class ProductResource extends Resource
                 Tables\Columns\ImageColumn::make('image')
                     ->label('Gambar')
                     ->disk('public')
-                    ->width(50) // Mengatur lebar thumbnail
-                    ->height(50), // Mengatur tinggi thumbnail
+                    ->width(50)
+                    ->height(50), 
                 Tables\Columns\TextColumn::make('sku')
                     ->label('Kode')
                     ->searchable(),
@@ -94,11 +92,11 @@ class ProductResource extends Resource
                     ->label('Satuan'),
                 Tables\Columns\TextColumn::make('stock')
                     ->label('Stok Saat Ini')
-                    ->badge() // <-- Tambahkan ini untuk membuatnya seperti label
+                    ->badge() 
                     ->color(fn (Product $record): string => match (true) {
-                        $record->stock < $record->minimum_stock => 'danger', // Merah jika stok < min (termasuk 0)
-                        $record->stock == $record->minimum_stock => 'warning', // Kuning jika stok = min
-                        default => 'success', // Hijau jika stok > min
+                        $record->stock < $record->minimum_stock => 'danger', 
+                        $record->stock == $record->minimum_stock => 'warning', 
+                        default => 'success', 
                     })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('minimum_stock')
@@ -115,7 +113,6 @@ class ProductResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // ===== AWAL PERUBAHAN KODE FILTER =====
                 SelectFilter::make('stock_status')
                     ->label('Status Stok')
                     ->options([
@@ -129,15 +126,12 @@ class ProductResource extends Resource
                             $data['value'],
                             function (Builder $query, $status): Builder {
                                 if ($status === 'tersedia') {
-                                    // Stok saat ini > Stok minimum
                                     return $query->whereRaw('stock > minimum_stock');
                                 }
                                 if ($status === 'minimal') {
-                                    // Stok saat ini = Stok minimum
                                     return $query->whereRaw('stock = minimum_stock');
                                 }
                                 if ($status === 'menipis') {
-                                    // Stok saat ini < Stok minimum DAN > 0
                                     return $query->whereRaw('stock < minimum_stock')->where('stock', '>', 0);
                                 }
                                 if ($status === 'habis') {
@@ -147,7 +141,6 @@ class ProductResource extends Resource
                             }
                         );
                     })
-                // ===== AKHIR PERUBAHAN KODE FILTER =====
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -163,7 +156,7 @@ class ProductResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            
         ];
     }
 

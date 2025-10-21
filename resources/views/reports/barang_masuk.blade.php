@@ -52,7 +52,7 @@
             color: white;
             font-weight: bold;
             text-align: center;
-            vertical-align: middle; /* Menambahkan ini untuk konsistensi */
+            vertical-align: middle; 
         }
         .items-table tfoot td {
             font-weight: bold;

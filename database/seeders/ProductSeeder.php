@@ -14,8 +14,7 @@ class ProductSeeder extends Seeder
      */
     public function run(): void
     {
-        // Mengosongkan tabel products terlebih dahulu agar tidak ada data duplikat
-        // jika seeder dijalankan lebih dari sekali.
+        
         Product::truncate();
 
         $spareparts = [
@@ -2050,17 +2049,17 @@ class ProductSeeder extends Seeder
             'KAWAT TALI LUNAK 0,8 MM SS',
         ];
 
-        // Looping untuk memasukkan setiap nama sparepart ke database
+        
         foreach ($spareparts as $partName) {
             Product::create([
                 'name' => $partName,
-                'sku' => null, // Biarkan null jika akan dibuat otomatis oleh sistem
-                'stock' => rand(10, 100), // Stok acak antara 10 - 100
-                'minimum_stock' => rand(5, 10), // Stok minimum acak antara 5 - 10
-                'lifetime_penggunaan' => rand(90, 730), // Lifetime acak antara 3 bulan - 2 tahun
-                'unit' => 'pcs', // Default 'pcs', bisa diubah jika perlu
-                'price' => rand(25000, 2000000), // Harga acak
-                'image' => null, // Biarkan kosong untuk saat ini
+                'sku' => null, 
+                'stock' => rand(10, 100), 
+                'minimum_stock' => rand(5, 10), 
+                'lifetime_penggunaan' => rand(90, 730), 
+                'unit' => 'pcs', 
+                'price' => rand(25000, 2000000),
+                'image' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
