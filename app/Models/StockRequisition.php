@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\HasMany; // <-- Tambahkan ini
+use App\Models\StockCorrection; // <-- Tambahkan ini
 
 class StockRequisition extends Model
 {
@@ -25,5 +27,10 @@ class StockRequisition extends Model
     public function stockMovements(): MorphMany 
     {
         return $this->morphMany(StockMovement::class, 'reference');
+    }
+
+    public function stockCorrections(): HasMany
+    {
+        return $this->hasMany(StockCorrection::class);
     }
 }

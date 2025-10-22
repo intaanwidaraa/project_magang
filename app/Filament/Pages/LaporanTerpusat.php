@@ -173,7 +173,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                     $records = $this->getFilteredTableQuery()->limit(100)->get(); 
                                     $data = $this->form->getState();
                                     $viewName = 'reports.' . ($jenisLaporan === 'stok' ? 'stok' : 'barang_masuk');
-                                    
                                     $pdf = Pdf::loadView($viewName, compact('records', 'data'));
                                     
                                     return response()->streamDownload(function () use ($pdf) {
