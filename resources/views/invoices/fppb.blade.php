@@ -4,16 +4,16 @@
     <title>FPPB - {{ $record->po_number }}</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <style>
-       
         @page {
             size: A4 landscape;
-            margin: 10mm 10mm 10mm 10mm; 
+            margin: 8mm 10mm 8mm 10mm; 
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 8.5pt;
+            font-size: 8pt; 
             margin: 0;
             padding: 0;
+            color: #000;
         }
         .container {
             padding: 0;
@@ -21,296 +21,385 @@
         }
 
         
-        .header {
+        .header-table {
             width: 100%;
-            display: table;
-            table-layout: fixed;
-            margin-bottom: 10px;
-            border-bottom: 2px solid #000;
+            border-bottom: 1.5px solid #000; 
             padding-bottom: 5px;
+            margin-bottom: 10px;
+            border-collapse: collapse; 
         }
-        .header-left, .header-right {
-            display: table-cell;
-            vertical-align: top;
+        .header-table td {
+            vertical-align: top; 
+            padding: 0;
         }
-        .header-left {
-            width: 60%;
-            padding-right: 10px;
+        .header-table .logo-info-cell {
+            width: 60%; 
+            padding-top: 0px; 
         }
-        .header-right {
-            width: 40%;
-            text-align: right;
-            border-left: 1px solid #ccc;
-            padding-left: 10px;
+        .header-table .doc-info-cell {
+            width: 40%; 
+            padding-top: 0px; 
         }
-        .logo {
-            float: left;
-            margin-right: 10px;
+
+        
+        .logo-section {
+            display: flex; 
+            align-items: flex-start; 
+            margin-bottom: 5px; 
         }
-        .logo img {
-            height: 40px; 
+        .logo-img-container {
+            width: 70px; 
+            flex-shrink: 0; 
+            margin-right: 10px; 
+            padding-top: 0px; 
+        }
+        .logo-img-container img {
+            height: 60px; 
             width: auto;
+            display: block;
         }
+        .company-info {
+            flex-grow: 1; 
+        }
+        .company-info p {
+            margin: 0;
+            line-height: 1.2; 
+        }
+        .company-info .company-name {
+            font-size: 10pt; 
+            font-weight: bold;
+        }
+        .makmur-group-text {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #1a73e8; 
+            margin-top: 0px;
+            margin-left: 70px; 
+            line-height: 1;
+        }
+        .food-beverage-text {
+            font-size: 7pt;
+            font-weight: normal;
+            margin-top: 2px;
+            margin-left: 70px; 
+            line-height: 1;
+            display: block;
+        }
+
+        
+        .makmur-group-line {
+            width: 100%;
+            height: 1px;
+            background-color: #000;
+            margin-top: 5px; 
+        }
+
+
         .doc-info table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8.5pt;
-            margin-left: auto;
+            font-size: 8pt;
             border: 1px solid #000;
         }
-        .doc-info table td {
-            padding: 2px 5px;
-            border: none;
+        .doc-info td {
+            padding: 1.5px 4px; 
+            vertical-align: middle; 
+            border: 1px solid #000;
+            height: 16px; 
+        }
+        .doc-info .label {
+            width: 35%;
+            border-right: 1px solid #000;
             text-align: left;
         }
-        .doc-info table .info-label {
-            width: 30%;
+        .doc-info .value {
+            width: 65%;
             font-weight: bold;
-            border-right: 1px solid #000;
-        }
-        .doc-info table .info-value {
-            border-left: 1px solid #000;
-        }
-        h2 {
-            text-align: center;
-            margin: 10px 0;
-            font-size: 13pt;
+            text-align: left;
+            padding-left: 5px;
         }
 
         
+        h2 {
+            text-align: center;
+            margin: 8px 0 12px 0;
+            font-size: 12pt;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+
+       
         .item-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 10px;
-            table-layout: fixed; 
+            margin-bottom: 0;
+            table-layout: fixed;
+            font-size: 7pt;
         }
         .item-table th, .item-table td {
             border: 1px solid #000;
-            padding: 3px;
+            padding: 1.5px;
             text-align: center;
-            vertical-align: middle; 
-            height: 18px; 
-            line-height: 1.2; 
+            vertical-align: middle;
+            height: 15px;
+            line-height: 1.1;
+            word-wrap: break-word;
         }
-        .item-table th {
-            background-color: #f2f2f2;
-            font-size: 8pt;
-            white-space: normal; 
-        }
-        
-        
-        .item-table .col-no { width: 3%; }
-        .item-table .col-coa { width: 4%; }
-        .item-table .col-sku { width: 7%; }
-        .item-table .col-name { width: 17%; text-align: left; } 
-        .item-table .col-qty, .item-table .col-sat, .item-table .col-stock { width: 4%; }
-        .item-table .col-price, .item-table .col-total { width: 8.5%; text-align: right !important; } 
-        .item-table .col-keterangan { width: 15%; font-size: 7.5pt; text-align: left; }
-        .item-table .col-last-buy { width: 9%; } 
-        .item-table .col-check, .item-table .col-cash, .item-table .col-noncash, .item-table .col-urgent { width: 3%; }
-       
-
-
-        .total-row td {
-            border: none !important;
-            padding: 5px;
+        .item-table thead th {
+            background-color: #E0E0E0;
             font-weight: bold;
+            white-space: normal;
+        }
+        .item-table tbody td {
+             height: 15px;
+             background-color: #fff;
+        }
+        .item-table .text-left { text-align: left; padding-left: 3px; }
+        .item-table .text-right { text-align: right; padding-right: 3px; }
+
+        
+        .item-table .col-no { width: 2.5%; }
+        .item-table .col-coa { width: 6%; }
+        .item-table .col-sku { width: 7%; }
+        .item-table .col-name { width: 15%; }
+        .item-table .col-qty { width: 3%; }
+        .item-table .col-sat { width: 4%; }
+        .item-table .col-stock { width: 4%; }
+        .item-table .col-price { width: 7%; }
+        .item-table .col-total { width: 7%; }
+        .item-table .col-keterangan { width: 12%; }
+        .item-table .col-last-buy { width: 7%; }
+        .item-table .col-check { width: 2.5%; }
+        .item-table .col-po-cash { width: 5%; }
+        .item-table .col-supplier { width: 9%; }
+        .item-table .col-nonpo { width: 5%; }
+        .item-table .col-urgent { width: 4%; }
+
+        
+         .item-table tfoot td {
+            border: 1px solid #000;
+            padding: 2px;
+            font-weight: bold;
+            height: 15px;
+            background-color: #E0E0E0;
+        }
+        .item-table tfoot .total-label {
             text-align: right;
-            border-top: 1px solid #000 !important; 
+            padding-right: 10px;
         }
-        .total-row .total-label {
-            text-align: left;
-            border-right: 1px solid #000 !important;
-            font-weight: normal;
-        }
-        .total-row .total-value {
-             border-left: 1px solid #000 !important; 
-             border-right: 1px solid #000 !important;
+         .item-table tfoot .rp-label {
+             text-align: left;
+             padding-left: 3px;
+             border-right: none !important;
+         }
+         .item-table tfoot .total-amount {
              text-align: right;
-        }
+             padding-right: 3px;
+             border-left: none !important;
+         }
 
         
         .sign-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 8pt;
+            margin-top: 5px;
+            font-size: 7.5pt;
         }
         .sign-table td {
             border: 1px solid #000;
-            padding: 5px 3px;
-            height: 40px; 
+            padding: 1px 3px;
+            height: 45px;
             vertical-align: top;
             text-align: center;
-            width: 20%; 
         }
-        .sign-table .sign-label {
-            height: 15px;
+         .sign-table .sign-label {
+            height: auto;
             font-weight: bold;
             padding-bottom: 0;
+            margin-bottom: 2px;
+            line-height: 1.1;
         }
         .sign-table .sign-name {
-            height: 15px;
+            height: auto;
             font-weight: normal;
+            vertical-align: bottom;
+            padding-top: 25px;
         }
+        .sign-table .col-aju { width: 20%; }
+        .sign-table .col-periksa { width: 20%; }
+        .sign-table .col-ketahui-1 { width: 20%; }
+        .sign-table .col-ketahui-2 { width: 20%; }
+        .sign-table .col-terima { width: 20%; }
+
+        
         .budget-row {
-            margin-top: 10px;
+            margin-top: 5px;
             text-align: right;
             font-weight: bold;
-            font-size: 8.5pt;
+            font-size: 8pt;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header">
-        <div class="header-left">
-            <div class="logo">
-                {{-- GANTI PATH INI DENGAN PATH LOGO PERUSAHAAN ANDA YANG BENAR --}}
-                <img src="{{ public_path('images/Logo_MAS.png') }}" alt="Logo Perusahaan"> 
-            </div>
-            <div style="float: left;">
-                <p style="font-size: 11pt; font-weight: bold; margin: 0;">PT. MAKMUR ARTHA SEJAHTERA</p>
-                <p style="font-size: 8pt; margin: 0;">JL. KI Ageng Tapa Blok Nambo No. 168 Astapada</p>
-                <p style="font-size: 8pt; margin: 0;">Tengah Tani, Cirebon</p>
-            </div>
-        </div>
-        <div class="header-right">
-            <table class="doc-info">
-                <tr>
-                    <td class="info-label">Tanggal</td>
-                    <td class="info-value">: **{{ $record->created_at->format('d/m/Y') }}**</td>
-                </tr>
-                <tr>
-                    <td class="info-label">Nomor</td>
-                    <td class="info-value">: **{{ $record->po_number }}**</td>
-                </tr>
-                <tr>
-                    <td class="info-label">Dept / Cost Center</td>
-                    {{-- Sesuaikan jika Anda memiliki kolom dinamis untuk ini --}}
-                    <td class="info-value">: **ENGINEERING / 450** </td> 
-                </tr>
-            </table>
-        </div>
-    </div>
+    {{-- HEADER MENGGUNAKAN TABLE --}}
+    <table class="header-table">
+        <tr>
+            <td class="logo-info-cell">
+                <div class="logo-section">
+                    <div class="logo-img-container">
+                        @php $logoPath = public_path('images/Logo_MAS.png'); @endphp
+                        @if(file_exists($logoPath))
+                            {{-- Menggunakan logo ikon saja --}}
+                            <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="Logo">
+                        @endif
+                    </div>
+                    <div class="company-info">
+                        <p class="company-name">PT. MAKMUR ARTHA SEJAHTERA</p>
+                        <p>JL. KI Ageng Tapa Blok Nambo No. 168 Astapada</p>
+                        <p>Tengah Tani, Cirebon</p>
+                    </div>
+                </div>
+                {{-- Teks "MAKMUR GROUP" dan "FOOD AND BEVERAGE COMPANY" --}}
+                <div class="makmur-group-text">MAKMUR GROUP</div>
+                <div class="food-beverage-text">FOOD AND BEVERAGE COMPANY</div>
+            </td>
+            <td class="doc-info-cell">
+                <table class="doc-info">
+                    <tr>
+                        <td class="label">Tanggal</td>
+                        <td class="value">{{ $record->created_at->format('d / m / Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Nomor</td>
+                        <td class="value">{{ $record->po_number }}</td>
+                    </tr>
+                    <tr>
+                        <td class="label">Dept / Cost Center</td>
+                        <td class="value">ENGINEERING / 450</td> {{-- Ganti dinamis jika perlu --}}
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 
     <h2>Form Permintaan Pembelian Barang</h2>
 
     {{-- TABEL RINCIAN BARANG --}}
     <table class="item-table">
         <thead>
+            {{-- Baris 1: Header Utama --}}
             <tr>
-                <th class="col-no">NO</th>
-                <th class="col-coa">COA</th>
-                <th class="col-sku">Kode Barang</th>
-                <th class="col-name">Nama Barang</th>
-                <th class="col-qty">Qty</th>
-                <th class="col-sat">Sat</th>
-                <th class="col-stock">Stock di Gudang</th>
-                <th class="col-price">Estimasi Harga Satuan (Rp)</th>
-                <th class="col-total">Total Estimasi (Rp)</th>
-                <th class="col-keterangan">Keterangan</th>
-                <th class="col-last-buy">Terakhir dibeli / Kedatangan</th>
-                <th class="col-check">Check (√)</th>
-                <th class="col-cash">PO / CASH</th>
-                <th class="col-noncash">NON PO / NON CASH</th>
-                <th class="col-urgent">URGENT</th>
+                <th class="col-no" rowspan="2">NO</th>
+                <th class="col-coa" rowspan="2">COA</th>
+                <th class="col-sku" rowspan="2">Kode Barang</th>
+                <th class="col-name" rowspan="2">Nama Barang</th>
+                <th class="col-qty" rowspan="2">Qty</th>
+                <th class="col-sat" rowspan="2">Sat</th>
+                <th class="col-stock" rowspan="2">Stock di Gudang</th>
+                <th colspan="2">Estimasi Harga</th> {{-- Gabung 2 kolom --}}
+                <th class="col-keterangan" rowspan="2">Keterangan</th>
+                <th class="col-last-buy" rowspan="2">Terakhir Beli / Kedatangan</th>
+                <th class="col-check" rowspan="2">(√)</th>
+                <th class="col-po-cash" rowspan="2">PO / CASH</th>
+                <th class="col-supplier" rowspan="2">SUPPLIER</th>
+                <th class="col-nonpo" rowspan="2">NON PO / NON CASH</th>
+                <th class="col-urgent" rowspan="2">URGENT</th>
+            </tr>
+            {{-- Baris 2: Sub-header Estimasi Harga --}}
+            <tr>
+                <th class="col-price">Harga</th>
+                <th class="col-total">Total</th>
             </tr>
         </thead>
         <tbody>
             @php
                 $grandTotal = 0;
                 $itemsCollection = collect($record->items);
-                $itemCount = $itemsCollection->count();
+                $rowCount = $itemsCollection->count();
+                $minRows = 15; // Target 15 baris
+
+                // Eager load
+                $supplierItemIds = $itemsCollection->pluck('supplier_item_id')->unique()->filter();
+                $supplierItems = \App\Models\SupplierItem::with('product')
+                                ->whereIn('id', $supplierItemIds)
+                                ->get()
+                                ->keyBy('id');
             @endphp
-            @foreach ($itemsCollection as $item)
+            @foreach ($itemsCollection as $index => $item)
                 @php
-                    $supplierItem = \App\Models\SupplierItem::find($item['supplier_item_id']);
+                    $supplierItem = $supplierItems->get($item['supplier_item_id']);
                     $product = optional($supplierItem)->product;
-                    
                     $total = ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
                     $grandTotal += $total;
-
-                    $poOrCash = strtoupper($record->payment_method ?? 'PO'); 
-                    $lastArrival = 'N/A'; 
+                    $paymentMethod = strtoupper($record->payment_method ?? '');
+                    $lastArrival = 'N/A'; // Perlu logika tambahan
+                    $supplierName = $record->supplier->name ?? 'N/A';
                 @endphp
                 <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td class="col-coa">N/A</td> 
+                    <td>{{ $index + 1 }}</td>
+                    <td class="col-coa">N/A</td>
                     <td class="col-sku">{{ optional($product)->sku ?? 'N/A' }}</td>
-                    <td class="col-name">{{ optional($supplierItem)->nama_item ?? 'Produk tidak ditemukan' }}</td>
+                    <td class="col-name text-left">{{ optional($supplierItem)->nama_item ?? 'Produk Tdk Ditemukan' }}</td>
                     <td class="col-qty">{{ $item['quantity'] ?? 0 }}</td>
                     <td class="col-sat">{{ $item['unit'] ?? 'pcs' }}</td>
                     <td class="col-stock">{{ optional($product)->stock ?? 0 }}</td>
-                    <td class="col-price">{{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
-                    <td class="col-total">{{ number_format($total, 0, ',', '.') }}</td>
-                    <td class="col-keterangan">{{ $record->notes ?? '-' }}</td>
+                    <td class="col-price text-right">{{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
+                    <td class="col-total text-right">{{ number_format($total, 0, ',', '.') }}</td>
+                    <td class="col-keterangan text-left">{{ $record->notes ?? '-' }}</td>
                     <td class="col-last-buy">{{ $lastArrival }}</td>
-                    <td class="col-check">&nbsp;</td> 
-                    <td class="col-cash">{{ $poOrCash === 'PO' || $poOrCash === 'CASH' ? '√' : '' }}</td>
-                    <td class="col-noncash">{{ $poOrCash !== 'PO' && $poOrCash !== 'CASH' ? '√' : '' }}</td>
-                    <td class="col-urgent">{{ $poOrCash === 'URGENT' ? '√' : '' }}</td>
+                    <td class="col-check">√</td>
+                    <td class="col-po-cash">{{ ($paymentMethod === 'PO' || $paymentMethod === 'CASH') ? $paymentMethod : '' }}</td>
+                    <td class="col-supplier text-left">{{ $supplierName }}</td>
+                    <td class="col-nonpo">{{ ($paymentMethod !== 'PO' && $paymentMethod !== 'CASH' && $paymentMethod !== 'URGENT') ? '??' : '' }}</td>
+                    <td class="col-urgent">{{ ($paymentMethod === 'URGENT') ? '√' : '' }}</td>
                 </tr>
             @endforeach
-            
-            {{-- Isi baris kosong hingga minimal 10 baris --}}
-            @for ($i = $itemCount; $i < 10; $i++)
+
+            {{-- Baris Kosong --}}
+            @for ($i = $rowCount; $i < $minRows; $i++)
                 <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td class="col-coa">&nbsp;</td>
-                    <td class="col-sku">&nbsp;</td>
-                    <td class="col-name">&nbsp;</td>
-                    <td class="col-qty">&nbsp;</td>
-                    <td class="col-sat">&nbsp;</td>
-                    <td class="col-stock">&nbsp;</td>
-                    <td class="col-price">&nbsp;</td>
-                    <td class="col-total">&nbsp;</td>
-                    <td class="col-keterangan">&nbsp;</td>
-                    <td class="col-last-buy">&nbsp;</td>
-                    <td class="col-check">&nbsp;</td>
-                    <td class="col-cash">&nbsp;</td>
-                    <td class="col-noncash">&nbsp;</td>
-                    <td class="col-urgent">&nbsp;</td>
+                    <td>{{ $i + 1 }}</td> <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td>
+                    <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td>
+                    <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td> <td>&nbsp;</td>
+                    <td>&nbsp;</td>
                 </tr>
             @endfor
-            
-            <tr class="total-row">
-                <td colspan="8" class="total-label" style="text-align: left; font-weight: normal;">Total</td>
-                <td colspan="1" class="total-value" style="font-weight: bold; text-align: right;">Rp **{{ number_format($grandTotal, 0, ',', '.') }}**</td>
-                <td colspan="6" style="border: none;">&nbsp;</td>
-            </tr>
         </tbody>
+        <tfoot>
+             {{-- Baris Total --}}
+             <tr>
+                <td colspan="7" class="total-label">Total</td>
+                <td class="rp-label">Rp</td>
+                <td class="total-amount">{{ number_format($grandTotal, 0, ',', '.') }}</td>
+                <td colspan="7"></td>
+             </tr>
+        </tfoot>
     </table>
 
     {{-- TABEL TANDA TANGAN --}}
     <table class="sign-table">
-        <thead>
-            <tr>
-                <td class="sign-label">Diajukan oleh, <br> Adm.</td>
-                <td class="sign-label">Diperiksa oleh, <br> Mgr. Engineering</td>
-                <td class="sign-label" colspan="2">Diketahui oleh, <br> RM/PM</td>
-                <td class="sign-label">Diterima oleh, <br> Purchasing</td>
-            </tr>
-            <tr style="height: 15px;">
-                <td class="sign-name">M. N. Arif</td>
-                <td class="sign-name">Gunawan</td>
-                <td class="sign-name" style="width: 10%;">M. Mustofa (RM/PM)</td>
-                <td class="sign-name" style="width: 10%;">Albert T. (NON RM/PM)</td>
-                <td class="sign-name">M. Fajarul H.</td>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                {{-- Ruang untuk Tanda Tangan --}}
-                <td><br><br><br></td> 
-                <td><br><br><br></td>
-                <td colspan="2"><br><br><br></td>
-                <td><br><br><br></td>
-            </tr>
-        </tbody>
+         <thead>
+             <tr>
+                 <td class="sign-label col-aju">Diajukan oleh,<br>Adm.</td>
+                 <td class="sign-label col-periksa">Diperiksa oleh,<br>Mgr. Engineering</td>
+                 <td class="sign-label col-ketahui-1">Diketahui oleh,<br>RM/PM</td>
+                 <td class="sign-label col-ketahui-2">Diketahui oleh,<br>NON RM/PM</td>
+                 <td class="sign-label col-terima">Diterima oleh,<br>Purchasing</td>
+             </tr>
+         </thead>
+         <tbody>
+             <tr>
+                 <td class="sign-name col-aju">M. N. Arif</td>
+                 <td class="sign-name col-periksa">Gunawan</td>
+                 <td class="sign-name col-ketahui-1">M. Mustofa</td>
+                 <td class="sign-name col-ketahui-2">Albert T.</td>
+                 <td class="sign-name col-terima">M. Fajarul H.</td>
+             </tr>
+         </tbody>
     </table>
-    
+
     <div class="budget-row">
         PERIODE BUDGET: {{ Carbon\Carbon::parse($record->created_at)->startOfWeek()->format('d M Y') }} s/d {{ Carbon\Carbon::parse($record->created_at)->endOfWeek()->format('d M Y') }}
     </div>
