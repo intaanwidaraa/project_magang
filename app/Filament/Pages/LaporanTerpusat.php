@@ -56,6 +56,8 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             'product_id' => null,
             'tanggal_mulai' => now()->startOfMonth()->format('Y-m-d'),
             'tanggal_akhir' => now()->endOfMonth()->format('Y-m-d'),
+            'status_filter_keluar' => 'all', // <-- Pastikan ini ada
+            'status_koreksi_keluar' => 'all', // --- TAMBAHAN BARU ---
         ]);
     }
 
@@ -135,6 +137,16 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ])
                             ->default('all')
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'keluar') // Hanya tampil jika 'keluar'
+                            ->columnSpan(3),
+                        Select::make('status_koreksi_keluar')
+                            ->label('Filter Koreksi')
+                            ->options([
+                                'all' => 'Semua Koreksi',
+                                'ya' => 'Pernah Dikoreksi',
+                                'tidak' => 'Belum Dikoreksi',
+                            ])
+                            ->default('all')
+                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'keluar')
                             ->columnSpan(3),
                         Select::make('filterPeriodeKeluar') 
                             ->label('Filter Berdasarkan')
@@ -280,6 +292,12 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
         $statusFilter = $this->data['status_filter_keluar'] ?? 'all'; // Gunakan nama state yang benar
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
+        }
+        $koreksiFilter = $this->data['status_koreksi_keluar'] ?? 'all';
+        if ($koreksiFilter === 'ya') {
+            $query->has('corrections'); // Tampilkan yang punya relasi corrections
+        } elseif ($koreksiFilter === 'tidak') {
+            $query->doesntHave('corrections'); // Tampilkan yang TIDAK punya relasi corrections
         }
         $filterPeriode = $this->data['filterPeriodeKeluar'] ?? 'harian'; // Gunakan nama state yang benar
         $kolomTanggal = ($statusFilter === 'completed') ? 'updated_at' : 'created_at';
@@ -472,5 +490,50 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
     protected function getTableHeaderActions(): array
     {
         return [];
+    }
+
+    public function cetakPdfAction(): ?StreamedResponse
+    {
+        $data = $this->form->getState();
+        $jenisLaporan = $data['jenisLaporan'] ?? 'stok';
+
+        // Hanya proses jika jenis laporannya 'keluar'
+        if ($jenisLaporan !== 'keluar') {
+            return null;
+        }
+        // --- MODIFIKASI QUERY PDF ---
+        // Panggil getTableQuery() agar filter KOREKSI juga ikut diterapkan
+        $records = $this->getTableQuery()->with(['corrections.user', 'corrections.product'])->get(); 
+        
+        // 2. Siapkan variabel untuk view PDF
+        $filters = $this->data; // $this->data sudah di-set oleh applyFilters
+        $filterPeriode = $filters['filterPeriodeKeluar'] ?? 'harian';
+        $tanggal = Carbon::parse($filters['tanggal'] ?? now());
+        $tanggalMulai = Carbon::parse($filters['tanggal_mulai'] ?? null);
+        $tanggalAkhir = Carbon::parse($filters['tanggal_akhir'] ?? null);
+
+        // Menentukan teks periode berdasarkan filter
+        $periodeTeks = match ($filterPeriode) {
+            'rentang_tanggal' => $tanggalMulai->translatedFormat('d M Y') . ' - ' . $tanggalAkhir->translatedFormat('d M Y'),
+            'bulanan' => $tanggal->translatedFormat('F Y'),
+            'tahunan' => $tanggal->translatedFormat('Y'),
+            default => $tanggal->translatedFormat('d F Y'), // harian
+        };
+
+        // 3. Load PDF
+        $pdf = Pdf::loadView('reports.barang_keluar', [
+            'data' => $records,      // Ini akan jadi $records di blade
+            'periode' => $periodeTeks,  // Ini akan jadi $periodeTeks di blade
+            'filters' => $filters,      // Ini untuk $statusTeks dan $koreksiTeks di blade
+        ])->setPaper('a4', 'portrait'); 
+
+        // 4. Buat nama file
+        $fileName = 'laporan-barang-keluar-' . Str::slug($periodeTeks) . '.pdf';
+
+        // 5. Stream download
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            $fileName
+        );
     }
 }

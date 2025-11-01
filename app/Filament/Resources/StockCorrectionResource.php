@@ -10,8 +10,10 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Filter; // Pastikan ini ada
+use Filament\Forms\Components\DatePicker; // Tambahkan ini
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon; // Tambahkan ini
 
 class StockCorrectionResource extends Resource
 {
@@ -28,6 +30,7 @@ class StockCorrectionResource extends Resource
 
     public static function form(Form $form): Form
     {
+        // ... (Form schema kamu tetap sama) ...
         return $form
             ->schema([
                 Forms\Components\TextInput::make('stock_requisition_id')->label('ID Permintaan'),
@@ -45,11 +48,12 @@ class StockCorrectionResource extends Resource
     {
         return $table
             ->columns([
+                 // ... (Kolom-kolom kamu tetap sama) ...
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Waktu Koreksi')
                     ->dateTime('d M Y H:i')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('stockRequisition.requester_name') 
+                Tables\Columns\TextColumn::make('stockRequisition.requester_name')
                     ->label('Peminta Asli')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('product_name_cache')
@@ -76,10 +80,81 @@ class StockCorrectionResource extends Resource
                     ->searchable(),
             ])
             ->filters([
-                Filter::make('stock_requisition_id')
-                    ->query(fn (Builder $query, array $data): Builder => $query->where('stock_requisition_id', $data['value']))
-                    ->label('ID Permintaan')
-                    ->hidden()
+                // Filter lama kamu (jika masih perlu)
+                // Filter::make('stock_requisition_id')
+                //     ->query(fn (Builder $query, array $data): Builder => $query->where('stock_requisition_id', $data['value']))
+                //     ->label('ID Permintaan')
+                //     ->hidden(),
+
+                // --- 👇 FILTER TANGGAL BARU 👇 ---
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('created_from')
+                            ->label('Dari Tanggal'),
+                        DatePicker::make('created_until')
+                            ->label('Sampai Tanggal')
+                            ->default(now()), // Default ke hari ini
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['created_from'] ?? null) {
+                            $indicators['created_from'] = 'Dari ' . Carbon::parse($data['created_from'])->translatedFormat('d M Y');
+                        }
+                        if ($data['created_until'] ?? null) {
+                            $indicators['created_until'] = 'Sampai ' . Carbon::parse($data['created_until'])->translatedFormat('d M Y');
+                        }
+                        return $indicators;
+                    }),
+
+                // --- Filter Cepat (Toggle) ---
+                 \Filament\Tables\Filters\TernaryFilter::make('daily')
+                    ->label('Filter Hari Ini')
+                    ->placeholder('Semua')
+                    ->trueLabel('Ya')
+                    ->falseLabel('Tidak')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereDate('created_at', today()),
+                        false: fn (Builder $query) => $query->whereDate('created_at','!=', today()),
+                        blank: fn (Builder $query) => $query,
+                    ),
+
+                \Filament\Tables\Filters\TernaryFilter::make('weekly')
+                    ->label('Filter Minggu Ini')
+                    ->placeholder('Semua')
+                    ->trueLabel('Ya')
+                    ->falseLabel('Tidak')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
+                         false: fn (Builder $query) => $query->whereNotBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]),
+                        blank: fn (Builder $query) => $query,
+                    ),
+
+                \Filament\Tables\Filters\TernaryFilter::make('monthly')
+                    ->label('Filter Bulan Ini')
+                    ->placeholder('Semua')
+                    ->trueLabel('Ya')
+                    ->falseLabel('Tidak')
+                     ->queries(
+                        true: fn (Builder $query) => $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year),
+                        false: fn (Builder $query) => $query->where(function ($query){
+                            $query->whereMonth('created_at','!=', now()->month)
+                                  ->orWhereYear('created_at','!=', now()->year);
+                        }),
+                        blank: fn (Builder $query) => $query,
+                    ),
+                // --- 👆 AKHIR FILTER TANGGAL BARU 👆 ---
+
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
@@ -98,5 +173,5 @@ class StockCorrectionResource extends Resource
             'index' => Pages\ListStockCorrections::route('/'),
             'view' => Pages\ViewStockCorrection::route('/{record}'),
         ];
-    }    
+    }
 }

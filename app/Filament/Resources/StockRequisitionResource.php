@@ -14,14 +14,11 @@ use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use App\Models\StockMovement;
 use Illuminate\Support\Str;
-
-// ... (use statements Anda yang sudah ada)
- // <-- Ini harusnya sudah ada
 use App\Models\StockCorrection;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
-use Illuminate\Database\Eloquent\Model; // <-- Tambahkan jika belum ada
+use Illuminate\Database\Eloquent\Model; 
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Resources\StockCorrectionResource;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,7 +36,7 @@ class StockRequisitionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->withCount('stockCorrections'); // Ini akan membuat 'stock_corrections_count'
+            ->withCount('corrections'); 
     }
 
     public static function form(Form $form): Form
@@ -127,13 +124,11 @@ class StockRequisitionResource extends Resource
                                                 'md' => 2,
                                             ]),
 
-                                            // --- TAMBAHAN FIELD TERSEMBUNYI ---
-                                        // Ini agar nama & unit ikut tersimpan di JSON 'items'
+                                            
                                         Forms\Components\Hidden::make('product_name')
                                             ->dehydrated(),
                                         Forms\Components\Hidden::make('product_unit')
                                             ->dehydrated(),
-                                        // --- AKHIR TAMBAHAN --
                                     ])
                                     ->columns([ 
                                         'md' => 8,
@@ -172,7 +167,6 @@ class StockRequisitionResource extends Resource
                 ->listWithLineBreaks()
                 ->limitList(3)
                 ->state(function (StockRequisition $record): array {
-                    // ... (Logika state items Anda)
                     $items = $record->items;
                     if (is_string($items)) {
                         $items = json_decode($items, true);
@@ -213,26 +207,22 @@ class StockRequisitionResource extends Resource
                         return "{$limitedName} ({$quantity} {$unit})";
                     })->all();
                 })
-                ->toggleable(isToggledHiddenByDefault: true),
+                ->toggleable(),
 
             Tables\Columns\TextColumn::make('status')->badge()->color(fn(string $state): string => match ($state) {
                 'pending' => 'warning',
                 'completed' => 'success',
             }),
-
-            // --- PENANDA KOREKSI BARU ---
-            Tables\Columns\IconColumn::make('stock_corrections_count')
-                ->label('') // Label dikosongkan agar rapi
+            Tables\Columns\IconColumn::make('corrections_count') 
+                ->label('') 
                 ->boolean()
-                // 'stock_corrections_count' diambil dari getEloquentQuery()
-                ->state(fn (StockRequisition $record): bool => $record->stock_corrections_count > 0)
-                ->trueIcon('heroicon-o-exclamation-triangle') // Ikon peringatan
-                ->trueColor('danger') // Warna merah
-                ->falseIcon(null) // Jangan tampilkan apa-apa jika tidak dikoreksi
+                ->state(fn (StockRequisition $record): bool => $record->corrections_count > 0) 
+                ->trueIcon('heroicon-o-exclamation-triangle') 
+                ->trueColor('danger')
+                ->falseIcon(null) 
                 ->tooltip(fn (StockRequisition $record): ?string => 
-                    $record->stock_corrections_count > 0 ? 'Data ini pernah dikoreksi' : null
+                $record->corrections_count > 0 ? 'Data ini pernah dikoreksi' : null 
                 ),
-            // --- AKHIR PENANDA KOREKSI ---
 
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Tanggal Dibuat')
@@ -250,7 +240,6 @@ class StockRequisitionResource extends Resource
                 }),
         ])
         ->filters([
-                // --- TAMBAHKAN FILTER BARU DI SINI ---
                 SelectFilter::make('dikoreksi')
                     ->label('Status Koreksi')
                     ->options([
@@ -260,18 +249,14 @@ class StockRequisitionResource extends Resource
                     ->query(function (Builder $query, array $data): Builder {
                         $value = $data['value'];
                         if ($value === 'ya') {
-                            // Tampilkan hanya yang punya relasi stockCorrections
-                            return $query->has('stockCorrections'); 
+                            return $query->has('corrections'); 
                         } elseif ($value === 'tidak') {
-                            // Tampilkan hanya yang TIDAK punya relasi stockCorrections
-                            return $query->doesntHave('stockCorrections');
+                            return $query->doesntHave('corrections');
                         }
-                        return $query; // Tampilkan semua jika filter tidak dipilih
+                        return $query; 
                     })
-                // --- AKHIR FILTER BARU ---
             ])
         ->headerActions([
-            // ... (Tombol 'Lihat Semua Log Koreksi' Anda)
             Tables\Actions\Action::make('lihat_semua_koreksi')
                 ->label('Lihat Semua Log Koreksi')
                 ->icon('heroicon-o-clipboard-document-list')
@@ -279,13 +264,11 @@ class StockRequisitionResource extends Resource
                 ->url(StockCorrectionResource::getUrl('index')) 
         ])
         ->actions([
-            // ... (Semua tombol action Anda: View, Edit, Complete, Koreksi, Riwayat)
             Tables\Actions\ViewAction::make(),
             Tables\Actions\EditAction::make()
                 ->visible(fn(StockRequisition $record): bool => $record->status === 'pending'),
             Tables\Actions\Action::make('complete')
                 ->label('Keluarkan Barang')
-                // ... (sisa kode action 'complete')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
@@ -337,9 +320,9 @@ class StockRequisitionResource extends Resource
                     Notification::make()->title('Barang berhasil dikeluarkan!')->success()->send();
                 })
                 ->visible(fn(StockRequisition $record): bool => $record->status === 'pending'),
+           // --- INI ADALAH BLOK YANG DIPERBAIKI ---
             Tables\Actions\Action::make('koreksi_stok')
                 ->label('Koreksi Stok')
-                // ... (sisa kode action 'koreksi_stok')
                 ->icon('heroicon-o-adjustments-horizontal')
                 ->color('danger')
                 ->visible(fn (StockRequisition $record): bool => $record->status === 'completed')
@@ -373,27 +356,55 @@ class StockRequisitionResource extends Resource
                 })
                 ->action(function (array $data, StockRequisition $record) {
                     DB::transaction(function () use ($data, $record) {
+                        // Decode items (pastikan konsisten bisa array)
                         $items = json_decode(json_encode($record->items), true);
-                        $itemToCorrect = collect($items)->firstWhere('product_id', (int)$data['product_id']);
-                        if (!$itemToCorrect) {
-                            Notification::make()->title('Gagal menemukan barang!')->danger()->send(); return;
+                        if (!is_array($items)) {
+                            Notification::make()->title('Gagal memproses data barang!')->danger()->send(); return;
                         }
-                        $product = Product::find($data['product_id']);
+
+                        $productIdToCorrect = (int)$data['product_id'];
+                        
+                        // --- Temukan INDEX (posisi) dari item yang akan dikoreksi ---
+                        $itemIndexToCorrect = collect($items)->search(function ($item) use ($productIdToCorrect) {
+                            return isset($item['product_id']) && (int)$item['product_id'] === $productIdToCorrect;
+                        });
+
+                        // --- Pastikan item ditemukan di dalam array $items ---
+                        if ($itemIndexToCorrect === false) {
+                            Notification::make()->title('Gagal menemukan barang dalam daftar permintaan!')->danger()->send(); return;
+                        }
+                        
+                        // Ambil item asli menggunakan index
+                        $itemToCorrect = $items[$itemIndexToCorrect]; 
+
+                        $product = Product::find($productIdToCorrect);
                         if (!$product) {
                             Notification::make()->title('Produk tidak ditemukan di database!')->danger()->send(); return;
                         }
+
+                        if (!isset($itemToCorrect['quantity'])) {
+                             Notification::make()->title('Data jumlah barang asli tidak valid!')->danger()->send(); return;
+                        }
+
                         $quantity_before = (int) $itemToCorrect['quantity'];
                         $quantity_after = (int) $data['quantity_after'];
                         $stockAdjustment = $quantity_before - $quantity_after;
+
+                        // Logika Penyesuaian Stok & Stock Movement
                         if ($stockAdjustment > 0) {
                             $product->increment('stock', $stockAdjustment);
                             $movementType = 'correction-in';
                         } else if ($stockAdjustment < 0) {
+                            if ($product->stock < abs($stockAdjustment)) {
+                                 Notification::make()->title("Stok {$product->name} tidak cukup untuk koreksi pengurangan!")->danger()->send();
+                                 throw new \Exception('Stok tidak cukup untuk koreksi pengurangan.'); 
+                            }
                             $product->decrement('stock', abs($stockAdjustment));
                             $movementType = 'correction-out';
                         } else {
-                            Notification::make()->title('Jumlah sama. Tidak ada koreksi.')->info()->send(); return;
+                            Notification::make()->title('Jumlah sama. Tidak ada koreksi stok.')->info()->send(); return;
                         }
+
                         StockMovement::create([
                             'product_id' => $product->id,
                             'type' => $movementType,
@@ -401,6 +412,8 @@ class StockRequisitionResource extends Resource
                             'reference_type' => StockRequisition::class,
                             'reference_id' => $record->id,
                         ]);
+
+                        // Buat Log Koreksi
                         StockCorrection::create([
                             'user_id' => Auth::id(),
                             'stock_requisition_id' => $record->id,
@@ -411,12 +424,20 @@ class StockRequisitionResource extends Resource
                             'difference' => $quantity_after - $quantity_before,
                             'reason' => $data['reason'],
                         ]);
-                    });
-                    Notification::make()->title('Stok berhasil dikoreksi!')->success()->send();
+
+                        // --- 👇 AWAL PERBAIKAN: UPDATE ARRAY ITEMS DI STOCK REQUISITION 👇 ---
+                        $updatedItems = $items; 
+                        $updatedItems[$itemIndexToCorrect]['quantity'] = $quantity_after;
+                        $record->update(['items' => $updatedItems]);
+                        // --- 👆 AKHIR PERBAIKAN 👆 ---
+
+                    }); // Akhir DB::transaction
+
+                    Notification::make()->title('Stok berhasil dikoreksi dan data permintaan diperbarui!')->success()->send();
                 }),
+            // --- AKHIR BLOK YANG DIPERBAIKI ---
             Tables\Actions\Action::make('riwayat_koreksi')
                 ->label('Riwayat Koreksi')
-                // ... (sisa kode action 'riwayat_koreksi')
                 ->icon('heroicon-o-clock')
                 ->color('gray')
                 ->visible(fn (StockRequisition $record): bool => $record->status === 'completed')
