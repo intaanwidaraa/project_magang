@@ -68,6 +68,93 @@ class PurchaseOrderResource extends Resource
                                     })
                                     ->required()
                                     ->columnSpanFull(),
+                                
+                                    Forms\Components\TextInput::make('requester_info')
+                                    ->label('Dept / Cost Centre')
+                                    ->placeholder('Contoh: ENGINEERING / 450')
+                                    ->required()
+                                    ->columnSpanFull(),
+
+                                Forms\Components\Select::make('coa_name')
+                                    ->label('COA (Chart of Accounts)')
+                                    ->options([
+                                        // Nilai (key) diubah agar konsisten, menyimpan NAMA + NOMOR
+                                        'PEMAKAIAN PRODUKSI (100.05.110)' => 'PEMAKAIAN PRODUKSI (100.05.110)',
+                                        'SISA PRODUKSI (100.05.110)' => 'SISA PRODUKSI (100.05.110)',
+                                        'PENJUALAN TUNAI (420.01.101)' => 'PENJUALAN TUNAI (420.01.101)',
+                                        'RETUR PEMBELIAN BAHAN BAKU (430.02.107)' => 'RETUR PEMBELIAN BAHAN BAKU (430.02.107)',
+                                        'RUSAK, SUSUT DAN HEMAT (430.02.109)' => 'RUSAK, SUSUT DAN HEMAT (430.02.109)',
+                                        'SAMPLE (430.02.109)' => 'SAMPLE (430.02.109)',
+                                        'REPACKING DI DISTRIBUTOR (430.02.109)' => 'REPACKING DI DISTRIBUTOR (430.02.109)',
+                                        'GANTI KARDUS (430.02.109)' => 'GANTI KARDUS (430.02.109)',
+                                        'PENJUALAN BAHAN BAKU (430.02.110)' => 'PENJUALAN BAHAN BAKU (430.02.110)',
+                                        'ADJUSTMENT STOCK (430.02.111)' => 'ADJUSTMENT STOCK (430.02.111)',
+                                        'PEMAKAIAN BATU BARA (450.02.106)' => 'PEMAKAIAN BATU BARA (450.02.106)',
+                                        'PERBAIKAN BANGUNAN PABRIK (450.02.111)' => 'PERBAIKAN BANGUNAN PABRIK (450.02.111)',
+                                        'PERBAIKAN MESIN PRODUKSI (450.02.112)' => 'PERBAIKAN MESIN PRODUKSI (450.02.112)',
+                                        'PERBAIKAN PERALATAN PABRIK (450.02.113)' => 'PERBAIKAN PERALATAN PABRIK (450.02.113)',
+                                        'PERBAIKAN KEPERLUAN PRODUKSI (450.02.121)' => 'PERBAIKAN KEPERLUAN PRODUKSI (450.02.121)',
+                                        'PERBAIKAN MOBIL BAGIAN PENJUALAN (500.04.100)' => 'PERBAIKAN MOBIL BAGIAN PENJUALAN (500.04.100)',
+                                        'PERBAIKAN MOTOR BAGIAN PENJUALAN (500.04.101)' => 'PERBAIKAN MOTOR BAGIAN PENJUALAN (500.04.101)',
+                                        'SAMPLE DAN HADIAH (500.06.101)' => 'SAMPLE DAN HADIAH (500.06.101)',
+                                        'PERBAIKAN BANGUNAN (510.05.100)' => 'PERBAIKAN BANGUNAN (510.05.100)',
+                                        'PERBAIKAN INVENTARIS KANTOR (510.05.101)' => 'PERBAIKAN INVENTARIS KANTOR (510.05.101)',
+                                        'PERBAIKAN MOBIL BAGIAN KANTOR (510.06.101)' => 'PERBAIKAN MOBIL BAGIAN KANTOR (510.06.101)',
+                                        'PERBAIKAN MOTOR BAGIAN KANTOR (510.06.102)' => 'PERBAIKAN MOTOR BAGIAN KANTOR (510.06.102)',
+                                        'PERBAIKAN MESIN PACKING (450.02.126)' => 'PERBAIKAN MESIN PACKING (450.02.126)',
+                                        'PERBAIKAN UTILITY (450.02.127)' => 'PERBAIKAN UTILITY (450.02.127)',
+                                        'BIAYA KEPERLUAN PRODUKSI (450.02.119)' => 'BIAYA KEPERLUAN PRODUKSI (450.02.119)',
+                                        'BIAYA PEMELIHARAAN INVENTARIS KANTOR (510.05.101)' => 'BIAYA PEMELIHARAAN INVENTARIS KANTOR (510.05.101)',
+                                        'ATK (500.05.100)' => 'ATK (500.05.100)',
+                                        'BIAYA RUMAH HARJA MULIA (600.02.100)' => 'BIAYA RUMAH HARJA MULIA (600.02.100)',
+                                        'ASET DALAM PENYELESAIAN (110.01.100)' => 'ASET DALAM PENYELESAIAN (110.01.100)',
+                                        'P3K (500.06.101)' => 'P3K (500.06.101)',
+                                        'KEPERLUAN PABRIKASI (430.02.109)' => 'KEPERLUAN PABRIKASI (430.02.109)',
+                                    ])
+                                    ->helperText('Pilih peruntukan COA. Jika tidak ada, klik ikon + untuk menambah COA baru.')
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->columnSpanFull()
+                                    ->suffixAction(
+        Forms\Components\Actions\Action::make('createCoa')
+            ->icon('heroicon-o-plus')    
+            ->label('null') // Label tombolnya hanya ikon +
+            ->tooltip('Buat COA Baru') // Pesan saat hover
+            ->modalHeading('Buat COA Baru')
+            ->modalButton('Buat')
+            ->form([
+                Forms\Components\TextInput::make('name')
+                    ->label('Nama COA (MatUsedTypeName)')
+                    ->placeholder('Contoh: BIAYA LAIN-LAIN')
+                    ->required(),
+                Forms\Components\TextInput::make('number')
+                    ->label('Nomor COA (AccNo)')
+                    ->placeholder('Contoh: 999.99.999')
+                    ->required(),
+            ])
+            ->action(function (array $data, callable $set) {
+                // Menggabungkan nama dan nomor baru menjadi satu string
+                $newName = strtoupper($data['name']);
+                $newNumber = $data['number'];
+                $newCoaString = "{$newName} ({$newNumber})";
+
+                // Set value dropdown ke string baru yang dibuat
+                // PENTING: String baru ini TIDAK otomatis ditambahkan ke ->options()
+                // Jadi, setelah dibuat, string ini hanya akan menjadi value terpilih saat ini.
+                $set('coa_name', $newCoaString);
+            })
+    ),
+    Forms\Components\Radio::make('stock_status') // Ganti dari Select
+            ->label('Status Stok')
+            ->options([
+                'Stock' => 'Stock',
+                'Non Stock' => 'Non Stock',
+            ])
+            ->required()
+            ->columnSpanFull()
+            ->inline() // Tambahkan ini agar berjajar ke samping
+            ->inlineLabel(false),
                             ])->columns(2),
 
                         Forms\Components\Section::make('Detail Barang Pesanan')
@@ -470,17 +557,43 @@ class PurchaseOrderResource extends Resource
                     ->visible(fn(PurchaseOrder $record): bool => $record->status === 'ordered'),
                 
                  Tables\Actions\Action::make('printFPPB')
-                    ->label('Cetak FPPB')
-                    ->icon('heroicon-o-document-text') 
-                    ->color('warning') 
-                    ->action(function (PurchaseOrder $record): StreamedResponse {
-                        $pdf = PDF::loadView('invoices.fppb', compact('record'));
+                ->label('Cetak FPPB')
+                ->icon('heroicon-o-document-text')
+                ->color('warning')
+                ->action(function (PurchaseOrder $record): StreamedResponse {
+                    // --- AWAL LOGIKA BARU ---
+                    // 1. Ambil ID produk unik dari item pesanan saat ini
+                    $productIds = collect($record->items)->pluck('product_id')->unique()->filter()->toArray();
+                    $lastArrivalDates = [];
 
-                        return response()->streamDownload(function () use ($pdf) {
-                            echo $pdf->output();
-                        }, 'FPPB-' . $record->po_number . '.pdf');
-                    })
-                    ->visible(true), 
+                    if (!empty($productIds)) {
+                        // 2. Cari StockMovement terakhir (tipe 'in' dari PO) untuk setiap produk
+                        $latestMovements = StockMovement::query()
+                            ->select('product_id', DB::raw('MAX(created_at) as latest_arrival_date'))
+                            ->whereIn('product_id', $productIds)
+                            ->where('type', 'in')
+                            ->where('reference_type', PurchaseOrder::class)
+                             // Optional: Hanya cari yang SEBELUM PO ini dibuat?
+                             // ->where('created_at', '<', $record->created_at)
+                            ->groupBy('product_id')
+                            ->pluck('latest_arrival_date', 'product_id'); // Hasilnya: [product_id => latest_date]
+
+                        // 3. Format tanggalnya
+                        $lastArrivalDates = $latestMovements->map(function ($date) {
+                            return Carbon::parse($date)->format('d/m/Y'); // Format d/m/Y
+                        })->toArray();
+                    }
+                    // --- AKHIR LOGIKA BARU ---
+
+                    // 4. Load view PDF dan kirim data record + tanggal kedatangan terakhir
+                    $pdf = PDF::loadView('invoices.fppb', compact('record', 'lastArrivalDates')); // <-- Tambahkan lastArrivalDates
+
+                    // 5. Stream download (tetap sama)
+                    return response()->streamDownload(function () use ($pdf) {
+                        echo $pdf->output();
+                    }, 'FPPB-' . $record->po_number . '.pdf');
+                })
+                ->visible(true), // <-- Pastikan visible true
 
                 Tables\Actions\Action::make('printInvoice')
                     ->label('Cetak Invoice')

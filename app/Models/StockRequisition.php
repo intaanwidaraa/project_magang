@@ -29,8 +29,10 @@ class StockRequisition extends Model
         return $this->morphMany(StockMovement::class, 'reference');
     }
 
-    public function stockCorrections(): HasMany
+    public function corrections(): HasMany
     {
         return $this->hasMany(StockCorrection::class);
     }
+
+    
 }
