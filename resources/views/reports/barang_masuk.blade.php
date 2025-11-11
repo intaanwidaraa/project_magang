@@ -73,27 +73,6 @@
 <body>
     @php
         $logoPath = public_path('images/Logo_MAS.png');
-        $periodeTeks = '';
-
-        switch ($data['filterPeriode']) {
-            case 'rentang_tanggal':
-                $mulai = isset($data['tanggal_mulai']) ? \Carbon\Carbon::parse($data['tanggal_mulai'])->translatedFormat('d F Y') : 'N/A';
-                $akhir = isset($data['tanggal_akhir']) ? \Carbon\Carbon::parse($data['tanggal_akhir'])->translatedFormat('d F Y') : 'N/A';
-                $periodeTeks = "{$mulai} s/d {$akhir}";
-                break;
-            case 'bulanan':
-                $tanggal = \Carbon\Carbon::parse($data['tanggal']);
-                $periodeTeks = 'Bulan ' . $tanggal->translatedFormat('F Y');
-                break;
-            case 'tahunan':
-                $tanggal = \Carbon\Carbon::parse($data['tanggal']);
-                $periodeTeks = 'Tahun ' . $tanggal->translatedFormat('Y');
-                break;
-            default: // 'harian'
-                $tanggal = \Carbon\Carbon::parse($data['tanggal']);
-                $periodeTeks = 'Tanggal ' . $tanggal->translatedFormat('d F Y');
-                break;
-        }
     @endphp
 
     <div class="container">
@@ -115,7 +94,7 @@
         
         <div class="report-title">
             <h2>Laporan Barang Masuk</h2>
-            <p>Periode: {{ $periodeTeks }}</p>
+            <p>Periode: {{ $periode }}</p>
         </div>
 
         <table class="items-table">
@@ -136,7 +115,7 @@
             </thead>
             <tbody>
                 @php $rowNumber = 1; @endphp
-                @forelse ($records as $record)
+                @forelse ($data as $record)
                     @php $itemCount = count($record->items); @endphp
                     @if($itemCount > 0)
                         @foreach($record->items as $item)
@@ -145,7 +124,7 @@
                                     <td class="text-center" rowspan="{{ $itemCount }}">{{ $rowNumber++ }}</td>
                                 @endif
 
-                                <td>{{ \App\Models\SupplierItem::find($item['supplier_item_id'])->nama_item ?? 'N/A' }}</td>
+                                <td>{{ $supplierItems->get($item['supplier_item_id'])->nama_item ?? 'N/A' }}</td>
                                 <td class="text-center">{{ $item['quantity'] ?? 0 }}</td>
                                 <td class="text-center">{{ $item['unit'] ?? 'pcs' }}</td>
                                 <td class="text-right">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
@@ -170,7 +149,7 @@
             <tfoot>
                 <tr>
                     <td colspan="5" class="text-right"><strong>Total Pengeluaran</strong></td>
-                    <td class="text-right"><strong>Rp {{ number_format($records->sum('grand_total'), 0, ',', '.') }}</strong></td>
+                    <td class="text-right"><strong>Rp {{ number_format($data->sum('grand_total'), 0, ',', '.') }}</strong></td>
                     <td colspan="5"></td>
                 </tr>
             </tfoot>

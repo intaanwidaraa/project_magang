@@ -10,10 +10,10 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Filters\Filter; // Pastikan ini ada
-use Filament\Forms\Components\DatePicker; // Tambahkan ini
+use Filament\Tables\Filters\Filter; 
+use Filament\Forms\Components\DatePicker; 
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon; // Tambahkan ini
+use Carbon\Carbon; 
 
 class StockCorrectionResource extends Resource
 {
@@ -21,16 +21,12 @@ class StockCorrectionResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static ?string $navigationLabel = 'Log Koreksi Stok';
     protected static ?string $navigationGroup = 'Manajemen Stok';
-
-    // --- SEMBUNYIKAN DARI SIDEBAR ---
     protected static bool $shouldRegisterNavigation = false;
 
     public static function canCreate(): bool { return false; }
     public static function canEdit(Model $record): bool { return false; }
-
     public static function form(Form $form): Form
     {
-        // ... (Form schema kamu tetap sama) ...
         return $form
             ->schema([
                 Forms\Components\TextInput::make('stock_requisition_id')->label('ID Permintaan'),
@@ -48,7 +44,6 @@ class StockCorrectionResource extends Resource
     {
         return $table
             ->columns([
-                 // ... (Kolom-kolom kamu tetap sama) ...
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Waktu Koreksi')
                     ->dateTime('d M Y H:i')
@@ -80,20 +75,13 @@ class StockCorrectionResource extends Resource
                     ->searchable(),
             ])
             ->filters([
-                // Filter lama kamu (jika masih perlu)
-                // Filter::make('stock_requisition_id')
-                //     ->query(fn (Builder $query, array $data): Builder => $query->where('stock_requisition_id', $data['value']))
-                //     ->label('ID Permintaan')
-                //     ->hidden(),
-
-                // --- 👇 FILTER TANGGAL BARU 👇 ---
                 Filter::make('created_at')
                     ->form([
                         DatePicker::make('created_from')
                             ->label('Dari Tanggal'),
                         DatePicker::make('created_until')
                             ->label('Sampai Tanggal')
-                            ->default(now()), // Default ke hari ini
+                            ->default(now()), 
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -116,8 +104,7 @@ class StockCorrectionResource extends Resource
                         }
                         return $indicators;
                     }),
-
-                // --- Filter Cepat (Toggle) ---
+                    
                  \Filament\Tables\Filters\TernaryFilter::make('daily')
                     ->label('Filter Hari Ini')
                     ->placeholder('Semua')
@@ -153,7 +140,6 @@ class StockCorrectionResource extends Resource
                         }),
                         blank: fn (Builder $query) => $query,
                     ),
-                // --- 👆 AKHIR FILTER TANGGAL BARU 👆 ---
 
             ])
             ->actions([

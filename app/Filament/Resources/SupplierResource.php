@@ -47,7 +47,8 @@ class SupplierResource extends Resource
                         Forms\Components\Select::make('product_id')
                             ->label('Pilih Produk dari Gudang')
                             ->options(Product::all()->pluck('name', 'id'))
-                            ->searchable()
+                            ->relationship('product', 'name') 
+                            ->searchable(['name', 'sku'])    
                             ->preload()
                             ->reactive() 
                             ->required()
@@ -60,13 +61,18 @@ class SupplierResource extends Resource
 
                                 }
                             })
-
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nama Produk Baru')
                                     ->required()
                                     ->maxLength(255),
                                 
+                                Forms\Components\TextInput::make('sku')
+                                    ->label('Kode Barang (SKU)')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->unique(table: Product::class, column: 'sku'),
+
                                 Forms\Components\TextInput::make('unit')
                                     ->label('Satuan (pcs, box, dll)')
                                     ->required()

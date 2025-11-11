@@ -33,6 +33,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Illuminate\Support\Str;
+use App\Exports\StokExport;
+use App\Exports\BarangMasukExport;
+use App\Exports\BarangKeluarExport;
+use App\Models\SupplierItem;
+use Illuminate\Support\Collection;
 
 class LaporanTerpusat extends Page implements HasForms, HasTable
 {
@@ -56,8 +61,8 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
             'product_id' => null,
             'tanggal_mulai' => now()->startOfMonth()->format('Y-m-d'),
             'tanggal_akhir' => now()->endOfMonth()->format('Y-m-d'),
-            'status_filter_keluar' => 'all', // <-- Pastikan ini ada
-            'status_koreksi_keluar' => 'all', // --- TAMBAHAN BARU ---
+            'status_filter_keluar' => 'all', 
+            'status_koreksi_keluar' => 'all',
         ]);
     }
 
@@ -100,9 +105,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->live()
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'barang_masuk')
                             ->columnSpan(3),
-                        
-
-                        
                         Select::make('filterPeriodeStok')
                             ->label('Filter Berdasarkan')
                             ->options([
@@ -120,14 +122,11 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->placeholder('Semua Produk')
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'stok')
                             ->columnSpan(3),
-                         DatePicker::make('tanggalStok') 
+                        DatePicker::make('tanggalStok') 
                             ->label('Pilih Tanggal')
                             ->default(now())
                             ->visible(fn (Get $get) => $get('jenisLaporan') === 'stok')
                             ->columnSpan(3),
-                        
-
-                        
                         Select::make('status_filter_keluar') 
                             ->label('Filter Status')
                             ->options([
@@ -136,7 +135,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                 'pending' => 'Pending (Belum Dikeluarkan)',
                             ])
                             ->default('all')
-                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'keluar') // Hanya tampil jika 'keluar'
+                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'keluar') 
                             ->columnSpan(3),
                         Select::make('status_koreksi_keluar')
                             ->label('Filter Koreksi')
@@ -150,7 +149,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ->columnSpan(3),
                         Select::make('filterPeriodeKeluar') 
                             ->label('Filter Berdasarkan')
-                             ->options([
+                                ->options([
                                 'rentang_tanggal' => 'Rentang Tanggal',
                                 'harian' => 'Harian',
                                 'bulanan' => 'Bulanan',
@@ -158,11 +157,9 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             ])
                             ->default('harian')
                             ->live()
-                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'keluar') // Hanya tampil jika 'keluar'
+                            ->visible(fn (Get $get) => $get('jenisLaporan') === 'keluar') 
                             ->columnSpan(3),
-                        
 
-                        
                         DatePicker::make('tanggal')
                             ->label('Pilih Tanggal')
                             ->default(now())
@@ -175,7 +172,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
 
                                 
                                 return ($jenis === 'barang_masuk' && $periodeMasuk !== 'rentang_tanggal') ||
-                                       ($jenis === 'keluar' && $periodeKeluar !== 'rentang_tanggal');
+                                        ($jenis === 'keluar' && $periodeKeluar !== 'rentang_tanggal');
                             })
                             ->columnSpan(3),
                         
@@ -192,7 +189,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                 $periodeKeluar = $get('filterPeriodeKeluar'); 
                                 
                                 return ($jenis === 'barang_masuk' && $periodeMasuk === 'rentang_tanggal') ||
-                                       ($jenis === 'keluar' && $periodeKeluar === 'rentang_tanggal');
+                                        ($jenis === 'keluar' && $periodeKeluar === 'rentang_tanggal');
                             })
                             ->columnSpan(6),
                         
@@ -214,7 +211,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                                     ->action('exportAction'), 
                             ])->alignEnd()
                         ])->columnSpan(12),
-                         
+                            
                     ])
                     ->extraAttributes(['class' => 'items-end gap-x-4']),
             ])
@@ -256,7 +253,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
         return $query;
     }
 
-    
     protected function applyStokFilters(Builder $query): void
     {
         $filterPeriodeStok = $this->data['filterPeriodeStok'] ?? 'harian';
@@ -274,7 +270,6 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
         }]);
     }
 
-    
     protected function applyBarangMasukFilters(Builder $query): void
     {
         $statusFilter = $this->data['status_filter_masuk'] ?? 'all'; 
@@ -286,25 +281,23 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
         $this->applyDateFilters($query, $filterPeriode, $kolomTanggal);
     }
 
-   
     protected function applyBarangKeluarFilters(Builder $query): void
     {
-        $statusFilter = $this->data['status_filter_keluar'] ?? 'all'; // Gunakan nama state yang benar
+        $statusFilter = $this->data['status_filter_keluar'] ?? 'all'; 
         if ($statusFilter !== 'all') {
             $query->where('status', $statusFilter);
         }
         $koreksiFilter = $this->data['status_koreksi_keluar'] ?? 'all';
         if ($koreksiFilter === 'ya') {
-            $query->has('corrections'); // Tampilkan yang punya relasi corrections
+            $query->has('corrections'); 
         } elseif ($koreksiFilter === 'tidak') {
-            $query->doesntHave('corrections'); // Tampilkan yang TIDAK punya relasi corrections
+            $query->doesntHave('corrections'); 
         }
-        $filterPeriode = $this->data['filterPeriodeKeluar'] ?? 'harian'; // Gunakan nama state yang benar
+        $filterPeriode = $this->data['filterPeriodeKeluar'] ?? 'harian'; 
         $kolomTanggal = ($statusFilter === 'completed') ? 'updated_at' : 'created_at';
         $this->applyDateFilters($query, $filterPeriode, $kolomTanggal);
     }
-
-    
+ 
     protected function applyDateFilters(Builder $query, string $filterPeriode, string $kolomTanggal): void
     {
         match ($filterPeriode) {
@@ -312,7 +305,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                 ->when($this->data['tanggal_mulai'] ?? null, fn(Builder $q, $date) => $q->whereDate($kolomTanggal, '>=', $date))
                 ->when($this->data['tanggal_akhir'] ?? null, fn(Builder $q, $date) => $q->whereDate($kolomTanggal, '<=', $date)),
             'bulanan' => $query->whereMonth($kolomTanggal, Carbon::parse($this->data['tanggal'] ?? now())->month)
-                               ->whereYear($kolomTanggal, Carbon::parse($this->data['tanggal'] ?? now())->year),
+                                ->whereYear($kolomTanggal, Carbon::parse($this->data['tanggal'] ?? now())->year),
             'tahunan' => $query->whereYear($kolomTanggal, Carbon::parse($this->data['tanggal'] ?? now())->year),
             default => $query->whereDate($kolomTanggal, Carbon::parse($this->data['tanggal'] ?? now())), 
         };
@@ -325,7 +318,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                 TextColumn::make('tanggal')
                     ->label('Periode')
                     ->state(function () {
-                        $tanggal = Carbon::parse($this->data['tanggal'] ?? now());
+                        $tanggal = Carbon::parse($this->data['tanggalStok'] ?? now()); 
                         $periode = $this->data['filterPeriodeStok'] ?? 'harian';
                         
                         return match ($periode) {
@@ -344,17 +337,14 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                         return ($record->stock - $masukHariIni + $keluarHariIni); 
                     })
                     ->alignRight(),
-                    
                 TextColumn::make('masuk')
                     ->label('Masuk')
                     ->state(fn (Product $record) => $record->stockMovements->where('type', 'in')->sum('quantity'))
                     ->alignRight(),
-                    
                 TextColumn::make('keluar')
                     ->label('Keluar')
                     ->state(fn (Product $record) => $record->stockMovements->where('type', 'out')->sum('quantity'))
                     ->alignRight(),
-                    
                 TextColumn::make('stock')
                     ->label('Stok Akhir')
                     ->state(fn(Product $record) => $record->stock)
@@ -407,18 +397,18 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                 TextColumn::make('updated_at')->label('Tanggal Penerimaan')->date('d M Y')->sortable(),
             ],
             'keluar' => [
-                 TextColumn::make('requester_name')->label('Nama Pengambil')->searchable(),
-                 TextColumn::make('department')->label('Bagian')->sortable(),
-                 TextColumn::make('shift')
+                TextColumn::make('requester_name')->label('Nama Pengambil')->searchable(),
+                TextColumn::make('department')->label('Bagian')->sortable(),
+                TextColumn::make('shift')
                     ->label('Shift')
                     ->formatStateUsing(fn (?string $state): string => $state ? "Shift {$state}" : '-'),
-                 TextColumn::make('notes')->label('Keterangan')->limit(30),
-                 TextColumn::make('items')
+                TextColumn::make('notes')->label('Keterangan')->limit(30),
+                TextColumn::make('items')
                     ->label('Daftar Barang')
                     ->listWithLineBreaks()
                     ->limitList(3) 
                     ->state(function (StockRequisition $record): array {
-                         
+                        
                         $items = $record->items;
                         if (is_string($items)) {
                             $items = json_decode($items, true);
@@ -447,7 +437,7 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             $productName = $item['product_name'] ?? 'Barang Dihapus'; 
                             $unit = $item['product_unit'] ?? 'pcs';
 
-                           
+                            
                             if (($productName === 'Barang Dihapus' || is_null($productName)) && isset($item['product_id'])) {
                                 $product = $products->get($item['product_id']);
                                 if ($product) {
@@ -460,12 +450,12 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                             return "{$limitedName} ({$quantity} {$unit})";
                         })->all();
                     }),
-                 TextColumn::make('status')->badge()->color(fn(string $state): string => match ($state) {
+                TextColumn::make('status')->badge()->color(fn(string $state): string => match ($state) {
                     'pending' => 'warning',
                     'completed' => 'success',
-                 }),
-                 TextColumn::make('created_at')->label('Tanggal Dibuat')->date('d M Y')->sortable(),
-                 TextColumn::make('updated_at')->label('Waktu Dikeluarkan')->dateTime('d M Y H:i')->sortable()
+                }),
+                TextColumn::make('created_at')->label('Tanggal Dibuat')->date('d M Y')->sortable(),
+                TextColumn::make('updated_at')->label('Waktu Dikeluarkan')->dateTime('d M Y H:i')->sortable()
                     ->formatStateUsing(function ($state, StockRequisition $record) {
                         return $record->status === 'pending' ? '-' : ($state ? $state->format('d M Y H:i') : '-');
                     }),
@@ -496,44 +486,272 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
     {
         $data = $this->form->getState();
         $jenisLaporan = $data['jenisLaporan'] ?? 'stok';
+        $query = $this->getTableQuery();
 
-        // Hanya proses jika jenis laporannya 'keluar'
-        if ($jenisLaporan !== 'keluar') {
+        if ($jenisLaporan === 'keluar') {
+            $query->with(['corrections.user', 'corrections.product']);
+        }
+
+        $records = $query->get();
+        
+        $supplierItems = collect();
+        if ($jenisLaporan === 'barang_masuk') {
+            $supplierItemIds = $records->pluck('items.*.supplier_item_id')->flatten()->unique()->filter();
+            if ($supplierItemIds->isNotEmpty()) {
+                $supplierItems = \App\Models\SupplierItem::whereIn('id', $supplierItemIds)->get()->keyBy('id');
+            }
+        }
+        
+        $filters = $this->data; 
+        $viewName = '';
+        $fileName = '';
+        $paperSize = 'a4';
+        $paperOrientation = 'portrait';
+        $periodeTeks = '';
+
+        if ($jenisLaporan === 'stok') {
+            $filterPeriode = $filters['filterPeriodeStok'] ?? 'harian';
+            $tanggal = Carbon::parse($filters['tanggalStok'] ?? now()); 
+            $periodeTeks = match ($filterPeriode) {
+                'bulanan' => $tanggal->translatedFormat('F Y'),
+                default => $tanggal->translatedFormat('d F Y'), 
+            };
+            
+        } else if ($jenisLaporan === 'barang_masuk') {
+            $filterPeriode = $filters['filterPeriodeMasuk'] ?? 'harian';
+            $tanggal = Carbon::parse($filters['tanggal'] ?? now());
+            $tanggalMulai = Carbon::parse($filters['tanggal_mulai'] ?? null);
+            $tanggalAkhir = Carbon::parse($filters['tanggal_akhir'] ?? null);
+            
+            $periodeTeks = match ($filterPeriode) {
+                'rentang_tanggal' => $tanggalMulai->translatedFormat('d M Y') . ' - ' . $tanggalAkhir->translatedFormat('d M Y'),
+                'bulanan' => $tanggal->translatedFormat('F Y'),
+                'tahunan' => $tanggal->translatedFormat('Y'),
+                default => $tanggal->translatedFormat('d F Y'), 
+            };
+
+        } else if ($jenisLaporan === 'keluar') {
+            $filterPeriode = $filters['filterPeriodeKeluar'] ?? 'harian';
+            $tanggal = Carbon::parse($filters['tanggal'] ?? now());
+            $tanggalMulai = Carbon::parse($filters['tanggal_mulai'] ?? null);
+            $tanggalAkhir = Carbon::parse($filters['tanggal_akhir'] ?? null);
+
+            $periodeTeks = match ($filterPeriode) {
+                'rentang_tanggal' => $tanggalMulai->translatedFormat('d M Y') . ' - ' . $tanggalAkhir->translatedFormat('d M Y'),
+                'bulanan' => $tanggal->translatedFormat('F Y'),
+                'tahunan' => $tanggal->translatedFormat('Y'),
+                default => $tanggal->translatedFormat('d F Y'), 
+            };
+        }
+
+        switch ($jenisLaporan) {
+            case 'stok':
+                $viewName = 'reports.stok'; 
+                $fileName = 'laporan-stok-' . Str::slug($periodeTeks) . '.pdf';
+                $paperOrientation = 'portrait'; 
+                $chunkSize = 250;
+                $viewData['data'] = $records->chunk($chunkSize);
+                $viewData['allRecords'] = $records;
+                break; 
+
+            case 'barang_masuk':
+                $viewName = 'reports.barang_masuk'; 
+                $fileName = 'laporan-barang-masuk-' . Str::slug($periodeTeks) . '.pdf';
+                $paperOrientation = 'portrait'; 
+                $viewData['data'] = $records; 
+                $viewData['allRecords'] = $records; 
+                break;
+
+            case 'keluar':
+                $viewName = 'reports.barang_keluar'; 
+                $fileName = 'laporan-barang-keluar-' . Str::slug($periodeTeks) . '.pdf';
+                $paperOrientation = 'portrait'; 
+                $viewData['data'] = $records; 
+                $viewData['allRecords'] = $records; 
+                break;
+
+            default:
+                return null;
+        }
+
+        if (!view()->exists($viewName)) {
+            \Filament\Notifications\Notification::make()
+                ->title('Error Cetak PDF')
+                ->body("View PDF untuk '{$jenisLaporan}' ({$viewName}.blade.php) tidak ditemukan.")
+                ->danger()
+                ->send();
             return null;
         }
-        // --- MODIFIKASI QUERY PDF ---
-        // Panggil getTableQuery() agar filter KOREKSI juga ikut diterapkan
-        $records = $this->getTableQuery()->with(['corrections.user', 'corrections.product'])->get(); 
-        
-        // 2. Siapkan variabel untuk view PDF
-        $filters = $this->data; // $this->data sudah di-set oleh applyFilters
-        $filterPeriode = $filters['filterPeriodeKeluar'] ?? 'harian';
-        $tanggal = Carbon::parse($filters['tanggal'] ?? now());
-        $tanggalMulai = Carbon::parse($filters['tanggal_mulai'] ?? null);
-        $tanggalAkhir = Carbon::parse($filters['tanggal_akhir'] ?? null);
 
-        // Menentukan teks periode berdasarkan filter
-        $periodeTeks = match ($filterPeriode) {
-            'rentang_tanggal' => $tanggalMulai->translatedFormat('d M Y') . ' - ' . $tanggalAkhir->translatedFormat('d M Y'),
-            'bulanan' => $tanggal->translatedFormat('F Y'),
-            'tahunan' => $tanggal->translatedFormat('Y'),
-            default => $tanggal->translatedFormat('d F Y'), // harian
-        };
+        $pdf = Pdf::loadView($viewName, [
+            'data' => $viewData['data'],          
+            'allRecords' => $viewData['allRecords'],
+            'periode' => $periodeTeks,
+            'filters' => $filters,
+            'supplierItems' => $supplierItems, 
+        ])->setPaper($paperSize, $paperOrientation); 
 
-        // 3. Load PDF
-        $pdf = Pdf::loadView('reports.barang_keluar', [
-            'data' => $records,      // Ini akan jadi $records di blade
-            'periode' => $periodeTeks,  // Ini akan jadi $periodeTeks di blade
-            'filters' => $filters,      // Ini untuk $statusTeks dan $koreksiTeks di blade
-        ])->setPaper('a4', 'portrait'); 
-
-        // 4. Buat nama file
-        $fileName = 'laporan-barang-keluar-' . Str::slug($periodeTeks) . '.pdf';
-
-        // 5. Stream download
         return response()->streamDownload(
             fn () => print($pdf->output()),
-            $fileName
+            $fileName 
         );
+
+    }
+    public function exportAction()
+    {
+        $data = $this->form->getState();
+        $jenisLaporan = $data['jenisLaporan'] ?? 'stok';
+
+        $query = $this->getTableQuery();
+        
+        if ($jenisLaporan === 'keluar') {
+            $query->with(['corrections.user', 'corrections.product']);
+        }
+
+        $records = $query->get();
+        $periodeTeks = '';
+        $viewData = [];
+        $filters = $this->data; 
+
+        if ($jenisLaporan === 'stok') {
+            $filterPeriode = $filters['filterPeriodeStok'] ?? 'harian';
+            $tanggal = Carbon::parse($filters['tanggalStok'] ?? now()); 
+            $periodeTeks = match ($filterPeriode) {
+                'bulanan' => $tanggal->translatedFormat('F Y'),
+                default => $tanggal->translatedFormat('d F Y'),
+            };
+        } else if ($jenisLaporan === 'barang_masuk') {
+            $filterPeriode = $filters['filterPeriodeMasuk'] ?? 'harian';
+            $tanggal = Carbon::parse($filters['tanggal'] ?? now());
+            $tanggalMulai = Carbon::parse($filters['tanggal_mulai'] ?? null);
+            $tanggalAkhir = Carbon::parse($filters['tanggal_akhir'] ?? null);
+            
+            $periodeTeks = match ($filterPeriode) {
+                'rentang_tanggal' => $tanggalMulai->translatedFormat('d M Y') . ' - ' . $tanggalAkhir->translatedFormat('d M Y'),
+                'bulanan' => $tanggal->translatedFormat('F Y'),
+                'tahunan' => $tanggal->translatedFormat('Y'),
+                default => $tanggal->translatedFormat('d F Y'),
+            };
+        } else if ($jenisLaporan === 'keluar') {
+            $filterPeriode = $filters['filterPeriodeKeluar'] ?? 'harian';
+            $tanggal = Carbon::parse($filters['tanggal'] ?? now());
+            $tanggalMulai = Carbon::parse($filters['tanggal_mulai'] ?? null);
+            $tanggalAkhir = Carbon::parse($filters['tanggal_akhir'] ?? null);
+
+            $periodeTeks = match ($filterPeriode) {
+                'rentang_tanggal' => $tanggalMulai->translatedFormat('d M Y') . ' - ' . $tanggalAkhir->translatedFormat('d M Y'),
+                'bulanan' => $tanggal->translatedFormat('F Y'),
+                'tahunan' => $tanggal->translatedFormat('Y'),
+                default => $tanggal->translatedFormat('d F Y'), 
+            };
+        }
+
+        $fileNameSlug = Str::slug($periodeTeks) ?: 'semua-waktu';
+        $fileName = "laporan-{$jenisLaporan}-{$fileNameSlug}.xlsx";
+
+        $export = match ($jenisLaporan) {
+            
+            'stok' => new StokExport($records, $periodeTeks),
+
+            'barang_masuk' => $this->prepareBarangMasukExport($records),
+            
+            'keluar' => $this->prepareBarangKeluarExport($records),
+
+            default => null,
+        };
+
+        if (!$export) {
+            return null;
+        }
+        return Excel::download($export, $fileName);
+    }
+
+    private function prepareBarangMasukExport(Collection $records): BarangMasukExport
+    {
+        $supplierItemIds = $records->pluck('items.*.supplier_item_id')->flatten()->unique()->filter();
+        $supplierItems = SupplierItem::whereIn('id', $supplierItemIds)->get()->keyBy('id');
+
+        $flatData = collect();
+
+        foreach ($records as $record) { 
+            if (empty($record->items)) {
+                continue;
+            }
+            foreach ($record->items as $item) { 
+                $supplierItem = $supplierItems->get($item['supplier_item_id']);
+                $totalItem = ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
+
+                $flatData->push([
+                    'tgl_pesan'     => $record->created_at->format('d-m-Y'),
+                    'tgl_terima'    => $record->status === 'completed' ? $record->updated_at->format('d-m-Y') : '-',
+                    'no_fppb'       => $record->po_number,
+                    'supplier'      => $record->supplier->name ?? 'N/A',
+                    'nama_barang'   => $supplierItem->nama_item ?? 'N/A',
+                    'qty'           => $item['quantity'] ?? 0,
+                    'satuan'        => $item['unit'] ?? 'pcs',
+                    'harga_satuan'  => $item['price'] ?? 0,
+                    'total_item'    => $totalItem,
+                    'pembayaran'    => ucfirst($record->payment_method),
+                    'status'        => ucfirst($record->status),
+                    'keterangan_po' => $record->notes,
+                ]);
+            }
+        }
+        return new BarangMasukExport($flatData);
+    }
+
+    private function prepareBarangKeluarExport(Collection $records): BarangKeluarExport
+    {
+        $flatData = collect();
+
+        foreach ($records as $record) { 
+            $items = $record->items;
+            if (is_string($items)) $items = json_decode($items, true);
+            else $items = json_decode(json_encode($items), true);
+            
+            if (empty($items) || !is_array($items)) continue;
+
+            $items = collect($items);
+            $productIdsNeedingFetch = $items->whereNull('product_name')->pluck('product_id')->unique()->filter();
+            $products = $productIdsNeedingFetch->isNotEmpty() ? Product::whereIn('id', $productIdsNeedingFetch)->get()->keyBy('id') : collect();
+            $koreksiInfo = '';
+            if ($record->corrections && $record->corrections->isNotEmpty()) {
+                $koreksiList = [];
+                foreach ($record->corrections as $correction) {
+                    $prodName = $correction->product?->name ?? $correction->product_name_cache ?? 'N/A';
+                    $diff = $correction->difference ?? 0;
+                    $diffText = $diff > 0 ? "+{$diff}" : $diff;
+                    $koreksiList[] = "{$prodName} ({$diffText})";
+                }
+                $koreksiInfo = implode('; ', $koreksiList);
+            }
+
+            foreach ($items as $item) {
+                $productName = $item['product_name'] ?? 'Barang Dihapus';
+                $unit = $item['product_unit'] ?? 'pcs';
+                if (($productName === 'Barang Dihapus' || is_null($productName)) && isset($item['product_id'])) {
+                    $product = $products->get($item['product_id']);
+                    if ($product) {
+                        $productName = $product->name;
+                        $unit = $product->unit ?? 'pcs';
+                    }
+                }
+
+                $flatData->push([
+                    'tgl_dibuat'    => $record->created_at->format('d-m-Y'),
+                    'waktu_keluar'  => $record->status === 'completed' ? $record->updated_at->format('d-m-Y H:i') : '-',
+                    'nama_pengambil'=> $record->requester_name,
+                    'bagian'        => $record->department,
+                    'shift'         => $record->shift ? 'Shift ' . $record->shift : '-',
+                    'nama_barang'   => $productName,
+                    'qty_keluar'    => $item['quantity'] ?? 0,
+                    'satuan'        => $unit,
+                    'status'        => ucfirst($record->status),
+                    'keterangan'    => $record->notes,
+                    'info_koreksi'  => $koreksiInfo,
+                ]);
+            }
+        }
+        return new BarangKeluarExport($flatData);
     }
 }

@@ -8,6 +8,7 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class LowStockProducts extends BaseWidget
+
 {
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 'full';
@@ -16,13 +17,20 @@ class LowStockProducts extends BaseWidget
     {
         return $table
             ->query(
-                Product::query()->whereColumn('stock', '<=', 'minimum_stock')
+                Product::query()
+                    ->where('is_consumable', true)
+                    ->whereColumn('stock', '<=', 'minimum_stock')
             )
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('Nama Barang'),
-                Tables\Columns\TextColumn::make('stock')->label('Stok Saat Ini')->badge()->color('danger'),
-                Tables\Columns\TextColumn::make('minimum_stock')->label('Stok Minimum')->badge()->color('warning'),
+                Tables\Columns\TextColumn::make('stock')->label('Stok Saat Ini')
+                    ->badge()->color('danger'),
+                Tables\Columns\TextColumn::make('minimum_stock')->label('Stok Minimum')
+                    ->badge()->color('warning'),
             ])
-            ->paginated(false);
+            ->paginated(true) 
+            ->defaultPaginationPageOption(10) 
+            ->paginationPageOptions([5, 10, 25, 50, 'all']); 
     }
+
 }

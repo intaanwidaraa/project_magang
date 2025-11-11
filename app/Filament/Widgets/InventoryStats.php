@@ -11,9 +11,9 @@ class InventoryStats extends BaseWidget
 {
     protected function getStats(): array
     {
-        $lowStockCount = Product::whereColumn('stock', '<=', 'minimum_stock')->count();
-
-        $expiringLifetimeCount = Product::where('lifetime_penggunaan', '<=', 30)->count();
+        $lowStockCount = Product::where('is_consumable', true) 
+                        ->whereColumn('stock', '<=', 'minimum_stock')
+                        ->count();
 
         return [
             Stat::make('Total Jenis Produk', Product::count())
@@ -25,14 +25,9 @@ class InventoryStats extends BaseWidget
                 ->icon('heroicon-o-truck'),
 
             Stat::make('Item Stok Kritis', $lowStockCount)
-                ->description('Produk yang stoknya di bawah minimum')
-                ->icon('heroicon-o-exclamation-triangle')
-                ->color($lowStockCount > 0 ? 'danger' : 'success'),
-
-            Stat::make('Produk Hampir Habis Lifetime', $expiringLifetimeCount)
-                ->description('Produk dengan lifetime < 30 hari')
-                ->icon('heroicon-o-clock')
-                ->color($expiringLifetimeCount > 0 ? 'warning' : 'success'),
-        ];
+            ->description('Produk (habis pakai) yang stoknya di bawah minimum') 
+            ->icon('heroicon-o-exclamation-triangle')
+            ->color($lowStockCount > 0 ? 'danger' : 'success'),
+    ];
     }
 }

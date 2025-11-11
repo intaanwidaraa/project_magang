@@ -14,7 +14,7 @@ class Product extends Model
 
    
     /**
-     * The "booted" method of the model.
+     * 
      *
      * @return void
      */
@@ -36,14 +36,5 @@ class Product extends Model
     public function supplierItems(): HasMany
     {
         return $this->hasMany(SupplierItem::class);
-    }
-
-    public function getSisaLifetimeAttribute()
-    {
-        if (!$this->lifetime_penggunaan || !$this->updated_at) {
-            return null;
-        }
-
-        return $this->lifetime_penggunaan - now()->diffInDays($this->updated_at);
     }
 }
