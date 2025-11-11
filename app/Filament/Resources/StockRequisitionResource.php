@@ -293,11 +293,6 @@ class StockRequisitionResource extends Resource
                                 Notification::make()->title("Stok {$product->name} tidak cukup!")->danger()->send();
                                 throw new \Exception('Stok tidak cukup.');
                             }
-                            if (is_null($product->tanggal_mulai_pemakaian)) {
-                                $product->update([
-                                    'tanggal_mulai_pemakaian' => now(),
-                                ]);
-                            }
                             $product->decrement('stock', $item['quantity']);
                             StockMovement::create([
                                 'product_id' => $item['product_id'],
@@ -320,7 +315,6 @@ class StockRequisitionResource extends Resource
                     Notification::make()->title('Barang berhasil dikeluarkan!')->success()->send();
                 })
                 ->visible(fn(StockRequisition $record): bool => $record->status === 'pending'),
-           // --- INI ADALAH BLOK YANG DIPERBAIKI ---
             Tables\Actions\Action::make('koreksi_stok')
                 ->label('Koreksi Stok')
                 ->icon('heroicon-o-adjustments-horizontal')
@@ -356,7 +350,6 @@ class StockRequisitionResource extends Resource
                 })
                 ->action(function (array $data, StockRequisition $record) {
                     DB::transaction(function () use ($data, $record) {
-                        // Decode items (pastikan konsisten bisa array)
                         $items = json_decode(json_encode($record->items), true);
                         if (!is_array($items)) {
                             Notification::make()->title('Gagal memproses data barang!')->danger()->send(); return;
@@ -364,17 +357,14 @@ class StockRequisitionResource extends Resource
 
                         $productIdToCorrect = (int)$data['product_id'];
                         
-                        // --- Temukan INDEX (posisi) dari item yang akan dikoreksi ---
                         $itemIndexToCorrect = collect($items)->search(function ($item) use ($productIdToCorrect) {
                             return isset($item['product_id']) && (int)$item['product_id'] === $productIdToCorrect;
                         });
 
-                        // --- Pastikan item ditemukan di dalam array $items ---
                         if ($itemIndexToCorrect === false) {
                             Notification::make()->title('Gagal menemukan barang dalam daftar permintaan!')->danger()->send(); return;
                         }
                         
-                        // Ambil item asli menggunakan index
                         $itemToCorrect = $items[$itemIndexToCorrect]; 
 
                         $product = Product::find($productIdToCorrect);
@@ -390,7 +380,6 @@ class StockRequisitionResource extends Resource
                         $quantity_after = (int) $data['quantity_after'];
                         $stockAdjustment = $quantity_before - $quantity_after;
 
-                        // Logika Penyesuaian Stok & Stock Movement
                         if ($stockAdjustment > 0) {
                             $product->increment('stock', $stockAdjustment);
                             $movementType = 'correction-in';
@@ -413,7 +402,6 @@ class StockRequisitionResource extends Resource
                             'reference_id' => $record->id,
                         ]);
 
-                        // Buat Log Koreksi
                         StockCorrection::create([
                             'user_id' => Auth::id(),
                             'stock_requisition_id' => $record->id,
@@ -425,17 +413,16 @@ class StockRequisitionResource extends Resource
                             'reason' => $data['reason'],
                         ]);
 
-                        // --- 👇 AWAL PERBAIKAN: UPDATE ARRAY ITEMS DI STOCK REQUISITION 👇 ---
                         $updatedItems = $items; 
                         $updatedItems[$itemIndexToCorrect]['quantity'] = $quantity_after;
                         $record->update(['items' => $updatedItems]);
-                        // --- 👆 AKHIR PERBAIKAN 👆 ---
+                       
 
-                    }); // Akhir DB::transaction
+                    });
 
                     Notification::make()->title('Stok berhasil dikoreksi dan data permintaan diperbarui!')->success()->send();
                 }),
-            // --- AKHIR BLOK YANG DIPERBAIKI ---
+            
             Tables\Actions\Action::make('riwayat_koreksi')
                 ->label('Riwayat Koreksi')
                 ->icon('heroicon-o-clock')

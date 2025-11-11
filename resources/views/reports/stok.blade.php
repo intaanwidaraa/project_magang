@@ -78,9 +78,9 @@
     </style>
 </head>
 <body>
-    @php
-        $logoPath = public_path('images/Logo_MAS.png'); 
-    @endphp
+@php
+    $logoPath = public_path('images/Logo_MAS.png'); 
+@endphp
 
     <div class="container">
         <table class="header-table">
@@ -99,65 +99,108 @@
             </tr>
         </table>
         
+       
         <div class="report-title">
             <h2>Laporan Stok Persediaan</h2>
-            <p>Tanggal: {{ \Carbon\Carbon::parse($data['tanggal'])->translatedFormat('d F Y') }}</p>
+            <p>Periode: {{ $periode }}</p>
         </div>
 
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%;">No</th>
-                    <th>Nama Barang</th>
-                    <th style="width: 10%;">Satuan</th>
-                    <th style="width: 15%;">Stok Awal</th>
-                    <th style="width: 15%;">Masuk</th>
-                    <th style="width: 15%;">Keluar</th>
-                    <th style="width: 15%;">Stok Akhir</th>
-                </tr>
-            </thead>
-            <tbody>
-                @php
-                    $totalMasuk = 0;
-                    $totalKeluar = 0;
-                    $totalStokAkhir = 0;
-                @endphp
-                @forelse ($records as $record)
-                    @php
-                        // Kalkulasi ulang data
-                        $masukHariIni = $record->stockMovements->where('type', 'in')->sum('quantity');
-                        $keluarHariIni = $record->stockMovements->where('type', 'out')->sum('quantity');
-                        $stokAwal = $record->stock - $masukHariIni + $keluarHariIni;
-                        
-                        // Penjumlahan total
-                        $totalMasuk += $masukHariIni;
-                        $totalKeluar += $keluarHariIni;
-                        $totalStokAkhir += $record->stock;
-                    @endphp
+        @php
+            
+            $grandTotalMasuk = 0;
+            $grandTotalKeluar = 0;
+            $grandTotalStokAkhir = 0;
+            $chunkSize = 0; 
+
+            if (isset($allRecords) && $allRecords->isNotEmpty()) {
+                foreach ($allRecords as $record) {
+                    $masuk = $record->stockMovements->where('type', 'in')->sum('quantity');
+                    $keluar = $record->stockMovements->where('type', 'out')->sum('quantity');
+                    
+                    $grandTotalMasuk += $masuk;
+                    $grandTotalKeluar += $keluar;
+                    $grandTotalStokAkhir += $record->stock;
+                }
+               
+                $chunkSize = (isset($data) && $data->first()) ? $data->first()->count() : 0; 
+            }
+        @endphp
+
+        @if (isset($allRecords) && $allRecords->isNotEmpty() && $chunkSize > 0)
+            
+            @foreach ($data as $chunk)
+                
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">No</th>
+                            <th>Nama Barang</th>
+                            <th style="width: 10%;">Satuan</th>
+                            <th style="width: 15%;">Stok Awal</th>
+                            <th style="width: 15%;">Masuk</th>
+                            <th style="width: 15%;">Keluar</th>
+                            <th style="width: 15%;">Stok Akhir</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($chunk as $record)
+                            @php
+                                $masukHariIni = $record->stockMovements->where('type', 'in')->sum('quantity');
+                                $keluarHariIni = $record->stockMovements->where('type', 'out')->sum('quantity');
+                                $stokAwal = $record->stock - $masukHariIni + $keluarHariIni;
+                            @endphp
+                            <tr>
+                                <td class="text-center">{{ ($loop->parent->index * $chunkSize) + $loop->iteration }}</td>
+                                <td>{{ $record->name }}</td>
+                                <td class="text-center">{{ $record->unit }}</td>
+                                <td class="text-center">{{ $stokAwal }}</td>
+                                <td class="text-center">{{ $masukHariIni }}</td>
+                                <td class="text-center">{{ $keluarHariIni }}</td>
+                                <td class="text-center">{{ $record->stock }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    
+                    @if ($loop->last)
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-right"><strong>Total</strong></td>
+                            <td class="text-center"><strong>{{ $grandTotalMasuk }}</strong></td>
+                            <td class="text-center"><strong>{{ $grandTotalKeluar }}</strong></td>
+                            <td class="text-center"><strong>{{ $grandTotalStokAkhir }}</strong></td> 
+                        </tr>
+                    </tfoot>
+                    @endif
+                    
+                </table>
+
+                {{-- Jika ini BUKAN chunk terakhir, paksa pindah halaman (page break) --}}
+                @if (!$loop->last)
+                    <div style="page-break-after: always;"></div>
+                @endif
+
+            @endforeach 
+
+        @else
+            <table class="items-table">
+                <thead>
                     <tr>
-                        <td class="text-center">{{ $loop->iteration }}</td>
-                        <td>{{ $record->name }}</td>
-                        <td class="text-center">{{ $record->unit }}</td>
-                        <td class="text-center">{{ $stokAwal }}</td>
-                        <td class="text-center">{{ $masukHariIni }}</td>
-                        <td class="text-center">{{ $keluarHariIni }}</td>
-                        <td class="text-center">{{ $record->stock }}</td>
+                        <th style="width: 5%;">No</th>
+                        <th>Nama Barang</th>
+                        <th style="width: 10%;">Satuan</th>
+                        <th style="width: 15%;">Stok Awal</th>
+                        <th style="width: 15%;">Masuk</th>
+                        <th style="width: 15%;">Keluar</th>
+                        <th style="width: 15%;">Stok Akhir</th>
                     </tr>
-                @empty
+                </thead>
+                <tbody>
                     <tr>
                         <td colspan="7" class="text-center">Tidak ada data untuk tanggal ini.</td>
                     </tr>
-                @endforelse
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="4" class="text-right"><strong>Total</strong></td>
-                    <td class="text-center"><strong>{{ $totalMasuk }}</strong></td>
-                    <td class="text-center"><strong>{{ $totalKeluar }}</strong></td>
-                    <td class="text-center"><strong>{{ $totalStokAkhir }}</strong></td> 
-                </tr>
-            </tfoot>
-        </table>
+                </tbody>
+            </table>
+        @endif
 
         <table class="signature-table">
             <tr>

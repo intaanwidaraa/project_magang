@@ -29,16 +29,21 @@ class StockMovementResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('created_at')->label('Tanggal')->dateTime()->sortable(),
                 Tables\Columns\TextColumn::make('product.name')->label('Produk')->searchable(),
-                Tables\Columns\TextColumn::make('type')->label('Status')
+               Tables\Columns\TextColumn::make('type')->label('Status')
                     ->badge()
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'in' => 'Masuk',
                         'out' => 'Keluar',
+                        'correction-in' => 'Koreksi Masuk',
+                        'correction-out' => 'Koreksi Keluar',
                         default => $state,
                     })
                     ->color(fn(string $state): string => match ($state) {
                         'in' => 'success',
                         'out' => 'danger',
+                        'correction-in' => 'warning', 
+                        'correction-out' => 'warning', 
+                        default => 'primary',
                     }),
                 Tables\Columns\TextColumn::make('quantity')->label('Jumlah'),
                 Tables\Columns\TextColumn::make('reference_type')

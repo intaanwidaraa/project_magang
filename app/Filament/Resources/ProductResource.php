@@ -47,22 +47,20 @@ class ProductResource extends Resource
                     ->required()
                     ->default(5)
                     ->helperText('Sistem akan memberi notifikasi jika stok mencapai angka ini.'),
-                Forms\Components\TextInput::make('lifetime_penggunaan')
-                    ->label('Lifetime Penggunaan')
-                    ->numeric()
-                    ->required()
-                    ->default(0)
-                    ->suffix('hari')
-                    ->helperText('Sistem akan memberi notifikasi jika masa penggunaan produk telah melewati batas ini.'),
-                Forms\Components\DatePicker::make('tanggal_mulai_pemakaian')
-                    ->label('Tanggal Mulai Pemakaian')
-                    ->disabled() 
-                    ->helperText('Tanggal otomatis terisi saat barang pertama kali digunakan.'),
                 Forms\Components\TextInput::make('unit')
                     ->label('Satuan')
                     ->required()
                     ->maxLength(255)
                     ->default('pcs'), 
+                Forms\Components\Toggle::make('is_consumable')
+                    ->label('Barang Habis Pakai (Consumable)')
+                    ->default(true)
+                    ->helperText('Aktifkan jika item ini habis dipakai (oli, bearing, cat). Non-aktifkan jika ini aset/alat (obeng, palu, mesin).')
+                    ->columnSpanFull(),
+                Forms\Components\Textarea::make('information')
+                    ->label('Informasi (Mesin Pengguna)')
+                    ->helperText('Contoh: MESIN STICK, MESIN JV, UHT, ROBO')
+                    ->columnSpanFull(),
                 Forms\Components\FileUpload::make('image')
                     ->label('Gambar Produk')
                     ->image() 
@@ -88,6 +86,12 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama Produk')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('information')
+                    ->label('Informasi Mesin')
+                    ->limit(40) 
+                    ->searchable()
+                    ->tooltip('Arahkan mouse untuk melihat info lengkap')
+                    ->toggleable(), 
                 Tables\Columns\TextColumn::make('unit')
                     ->label('Satuan'),
                 Tables\Columns\TextColumn::make('stock')
@@ -102,10 +106,6 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('minimum_stock')
                     ->label('Min. Stok')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('lifetime_penggunaan')
-                    ->label('Lifetime Penggunaan')
-                    ->sortable()
-                    ->suffix(' hari'),
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Terakhir Update')
                     ->dateTime('d M Y H:i')
@@ -113,6 +113,19 @@ class ProductResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('is_consumable')
+                ->label('Tipe Barang')
+                ->options([
+                    '1' => 'Consumable (Habis Pakai)',
+                    '0' => 'Non-Consumable (Alat/Aset)',
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    if (blank($data['value'])) {
+                        return $query;
+                    }
+            
+                    return $query->where('is_consumable', (bool) $data['value']);
+                }),
                 SelectFilter::make('stock_status')
                     ->label('Status Stok')
                     ->options([
