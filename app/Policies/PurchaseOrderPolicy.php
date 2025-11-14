@@ -13,7 +13,7 @@ class PurchaseOrderPolicy
      */
     public function viewAny(User $user): bool
     {
-        // Admin dan Staf bisa melihat daftar PO
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -22,7 +22,7 @@ class PurchaseOrderPolicy
      */
     public function view(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        // Admin dan Staf bisa melihat detail PO
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -31,7 +31,7 @@ class PurchaseOrderPolicy
      */
     public function create(User $user): bool
     {
-        // HANYA Admin yang boleh membuat PO baru
+        
         return $user->hasRole('Administrator');
     }
 
@@ -40,7 +40,7 @@ class PurchaseOrderPolicy
      */
     public function update(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        // Admin dan Staf bisa update (Staf butuh ini untuk tombol aksi)
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -49,7 +49,7 @@ class PurchaseOrderPolicy
      */
     public function delete(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        // HANYA Admin yang boleh menghapus PO
+        
         return $user->hasRole('Administrator');
     }
 
