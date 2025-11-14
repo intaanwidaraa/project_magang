@@ -13,7 +13,7 @@ class StockRequisitionPolicy
      */
     public function viewAny(User $user): bool
     {
-        // Keduanya bisa melihat daftar permintaan barang
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -22,7 +22,7 @@ class StockRequisitionPolicy
      */
     public function view(User $user, StockRequisition $stockRequisition): bool
     {
-        // Keduanya bisa melihat detail permintaan barang
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -31,7 +31,7 @@ class StockRequisitionPolicy
      */
     public function create(User $user): bool
     {
-        // Keduanya bisa membuat permintaan barang baru
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -40,7 +40,7 @@ class StockRequisitionPolicy
      */
     public function update(User $user, StockRequisition $stockRequisition): bool
     {
-        // Keduanya bisa update (dibutuhkan untuk tombol aksi)
+        
         return $user->hasRole(['Administrator', 'Staf Gudang']);
     }
 
@@ -49,7 +49,7 @@ class StockRequisitionPolicy
      */
     public function delete(User $user, StockRequisition $stockRequisition): bool
     {
-        // HANYA Admin yang boleh menghapus data
+        
         return $user->hasRole('Administrator');
     }
 
