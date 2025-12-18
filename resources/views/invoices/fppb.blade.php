@@ -20,7 +20,7 @@
             width: 100%;
         }
 
-        /* --- ▼▼▼ CSS HEADER BARU (MENGGANTIKAN .header-table-revised) ▼▼▼ --- */
+        /* --- HEADER TABLE --- */
         .header-table {
             width: 100%;
             border-collapse: collapse;
@@ -33,21 +33,12 @@
             font-size: 8pt; 
             line-height: 1.3;
         }
-        /* Kolom kiri untuk Logo + Info PT */
-        .header-left-col {
-            width: 60%;
-        }
-        /* Kolom kanan untuk Info Dokumen */
-        .header-right-col {
-            width: 40%;
-        }
+        .header-left-col { width: 60%; }
+        .header-right-col { width: 40%; }
         
-        /* Tabel di dalam kolom kiri (Logo + Info PT) */
-        .company-info-table {
-            border-collapse: collapse;
-        }
+        .company-info-table { border-collapse: collapse; }
         .company-info-table .logo-cell {
-            width: 60px; /* Lebar sel logo */
+            width: 60px;
             padding-right: 10px;
             vertical-align: top;
         }
@@ -56,26 +47,19 @@
             width: auto;
             display: block;
         }
-        .company-info-table .info-cell {
-            vertical-align: top;
-        }
+        .company-info-table .info-cell { vertical-align: top; }
         .company-info-table .company-name {
             font-size: 10pt;
             font-weight: bold;
             margin: 0 0 2px 0;
             padding: 0;
         }
-        .company-info-table .company-address {
-            margin: 0;
-            padding: 0;
-            line-height: 1.3;
-        }
+        .company-info-table .company-address { margin: 0; padding: 0; line-height: 1.3; }
         
-        /* Tabel di dalam kolom kanan (Info Dokumen) */
         .doc-info-table {
             border-collapse: collapse;
-            width: auto; /* Biarkan auto agar pas */
-            margin-left: auto; /* Dorong ke kanan */
+            width: auto;
+            margin-left: auto;
         }
         .doc-info-table td {
             padding-bottom: 2px;
@@ -87,22 +71,17 @@
             padding-right: 5px;
             white-space: nowrap; 
         }
-        .doc-info-table .separator {
-            text-align: left;
-            width: 5px;
-        }
-        .doc-info-table .value {
-            text-align: left;
-            font-weight: bold;
-        }
+        .doc-info-table .separator { text-align: left; width: 5px; }
+        .doc-info-table .value { text-align: left; font-weight: bold; }
         
-
         h2 {
             text-align: center;
             margin: 8px 0 12px 0;
             font-size: 12pt;
             font-weight: bold;
         }
+
+        /* --- ITEM TABLE --- */
         .item-table {
             width: 100%;
             border-collapse: collapse;
@@ -130,6 +109,8 @@
         }
         .item-table .text-left { text-align: left; padding-left: 3px; }
         .item-table .text-right { text-align: right; padding-right: 3px; }
+        
+        /* Column Widths */
         .item-table .col-no { width: 2.5%; }
         .item-table .col-coa { width: 6%; }
         .item-table .col-sku { width: 7%; }
@@ -147,6 +128,7 @@
         .item-table .col-supplier { width: 9%; }
         .item-table .col-nopo-tgl { width: 5%; }
         .item-table .col-urgent { width: 5%; }
+        
         .item-table tfoot td {
             border: 1px solid #000;
             padding: 2px;
@@ -154,10 +136,7 @@
             height: 15px;
             background-color: #E0E0E0;
         }
-        .item-table tfoot .total-label {
-            text-align: right;
-            padding-right: 10px;
-        }
+        .item-table tfoot .total-label { text-align: right; padding-right: 10px; }
         .item-table tfoot .rp-label {
             text-align: left;
             padding-left: 3px;
@@ -168,6 +147,8 @@
             padding-right: 3px;
             border-left: none !important;
         }
+
+        /* --- SIGN TABLE --- */
         .sign-table {
             width: 100%;
             border-collapse: collapse;
@@ -208,7 +189,6 @@
 <body>
 
 <div class="container">
-    
     
     <table class="header-table">
         <tr>
@@ -251,6 +231,7 @@
             </td>
         </tr>
     </table>
+    
     <h2>Form Permintaan Pembelian Barang</h2>
 
     <table class="item-table">
@@ -282,15 +263,20 @@
         <tbody>
             @php
                 $grandTotal = 0;
-                $itemsCollection = collect($record->items);
+                $itemsCollection = collect($record->items); // $record->items sekarang berisi array item JSON
                 $rowCount = $itemsCollection->count();
-                $minRows = 15; // Target 15 baris
+                $minRows = 15; 
+                
+                // Ambil semua supplier_item_id dari JSON items
                 $supplierItemIds = $itemsCollection->pluck('supplier_item_id')->unique()->filter();
-                $supplierItems = \App\Models\SupplierItem::with('product')
+                
+                // Load SupplierItem beserta relasi Supplier-nya agar bisa ambil nama supplier
+                $supplierItems = \App\Models\SupplierItem::with(['product', 'supplier']) // Load relasi supplier
                                         ->whereIn('id', $supplierItemIds)
                                         ->get()
                                         ->keyBy('id');
             @endphp
+
             @foreach ($itemsCollection as $index => $item)
                 @php
                     $supplierItem = $supplierItems->get($item['supplier_item_id']);
@@ -298,22 +284,31 @@
                     $total = ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
                     $grandTotal += $total;
                     $paymentMethod = strtoupper($record->payment_method ?? '');
-                    $supplierName = $record->supplier->name ?? 'N/A';
+
+                    // PERBAIKAN UTAMA: Ambil nama supplier dari item, bukan dari record utama
+                    // Jika user manual ganti supplier di repeater, kita harusnya ambil ID dari item['supplier_id']
+                    // Tapi kalau cuma ngandelin relasi supplierItem->supplier juga bisa.
+                    // Lebih akurat ambil dari ID yang tersimpan di JSON item['supplier_id'] jika ada.
+                    
+                    $supplierName = 'N/A';
+                    if (!empty($item['supplier_id'])) {
+                        $supp = \App\Models\Supplier::find($item['supplier_id']);
+                        $supplierName = $supp ? $supp->name : 'N/A';
+                    } elseif ($supplierItem && $supplierItem->supplier) {
+                         $supplierName = $supplierItem->supplier->name;
+                    }
                 @endphp
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td class="col-coa text-left">
                         @php
-                            $coaDisplay = 'N/A'; // Default value
-                            // Ambil COA dari $item, bukan $record
+                            $coaDisplay = 'N/A';
                             $itemCoaName = $item['coa_name'] ?? null; 
-                            
                             if (!empty($itemCoaName)) {
-                                if (preg_match('/\\((.*?)\\)/', $itemCoaName, $matches)) {
-                                    // Ambil nomornya saja, e.g., 450.02.112
+                                if (preg_match('/\((.*?)\)/', $itemCoaName, $matches)) {
                                     $coaDisplay = $matches[1]; 
                                 } else {
-                                    $coaDisplay = 'N/A'; // Jika formatnya aneh
+                                    $coaDisplay = 'N/A';
                                 }
                             }
                         @endphp
@@ -338,7 +333,9 @@
                     <td class="col-non-check" style="font-family: DejaVu Sans, sans-serif;">{{ !$isStockItem ? '√' : '' }}</td>
                     
                     <td class="col-po-cash">{{ ($paymentMethod === 'PO' || $paymentMethod === 'CASH') ? $paymentMethod : '' }}</td>
+                    
                     <td class="col-supplier text-left">{{ $supplierName }}</td>
+                    
                     <td class="col-nopo-tgl">--</td>
                     <td class="col-urgent">{{ ($paymentMethod === 'URGENT') ? '√' : '' }}</td>
                 </tr>
@@ -373,17 +370,12 @@
                 <th class="col-sign-diterima" rowspan="2">Diterima Oleh</th>
                 <th class="col-sign-budget" rowspan="2">
                     PERIODE BUDGET<br>
-                    
                     @php
                         $startDate = !empty($record->budget_start_date) ? \Carbon\Carbon::parse($record->budget_start_date) : null;
                         $endDate = !empty($record->budget_end_date) ? \Carbon\Carbon::parse($record->budget_end_date) : null;
-                        
-                        // Komentar yang salah sudah diperbaiki
-                        // Gunakan format 'd M Y' (Contoh: 10 Nov 2025)
                         $startFormatted = $startDate ? $startDate->format('d M Y') : 'N/A';
                         $endFormatted = $endDate ? $endDate->format('d M Y') : 'N/A';
                     @endphp
-                    
                     {{ $startFormatted }} s/d {{ $endFormatted }}
                 </th>
             </tr>
@@ -394,11 +386,11 @@
         </thead>
         <tbody>
             <tr>
-                <td class="col-sign-diajukan">M. N. Arif</td>
+                <td class="col-sign-diajukan">M. N. Aef</td>
                 <td class="col-sign-diperiksa">Gunawan</td>
-                <td class="col-sign-diketahui-1">M. Mustofa</td>
-                <td class="col-sign-diketahui-2">Albert T.</td>
-                <td class="col-sign-diterima">M. Fajarul H.</td>
+                <td class="col-sign-diketahui-1"></td>
+                <td class="col-sign-diketahui-2">Rudi Supriadi</td>
+                <td class="col-sign-diterima">M. Faqih Haekal</td>
                 <td class="col-sign-budget">&nbsp;</td>
             </tr>
             <tr>

@@ -69,10 +69,21 @@ class SupplierResource extends Resource
                                 
                                 Forms\Components\TextInput::make('sku')
                                     ->label('Kode Barang (SKU)')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->unique(table: Product::class, column: 'sku'),
+                                    ->required() 
+                                    ->maxLength(255),
 
+                                Forms\Components\Radio::make('is_stock')
+                                    ->label('Tipe Barang')
+                                    ->boolean()
+                                    ->options([
+                                        1 => 'Stok (Inventory)',
+                                        0 => 'Non-Stok (Jasa/Langsung)',
+                                    ])
+                                    ->default(true)
+                                    ->inline()
+                                    ->reactive()
+                                    ->required(),
+                                    
                                 Forms\Components\TextInput::make('unit')
                                     ->label('Satuan (pcs, box, dll)')
                                     ->required()

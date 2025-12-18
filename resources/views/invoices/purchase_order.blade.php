@@ -88,6 +88,19 @@
 @php
     $logoPath = public_path('images/Logo_MAS.png'); 
     $ttdPath  = public_path('images/ttd.jpg'); 
+    
+    // LOGIC MULTI-SUPPLIER
+    $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+    $itemsCollection = collect($items);
+    
+    // Ambil ID supplier unik
+    $supplierIds = $itemsCollection->pluck('supplier_id')->unique()->filter();
+    // Ambil Nama-nama Supplier
+    $supplierNames = \App\Models\Supplier::whereIn('id', $supplierIds)->pluck('name')->join(', ');
+    
+    // Ambil detail SupplierItem untuk ditampilkan di tabel
+    $supplierItemIds = $itemsCollection->pluck('supplier_item_id')->unique()->filter();
+    $supplierItems = \App\Models\SupplierItem::with('supplier')->whereIn('id', $supplierItemIds)->get()->keyBy('id');
 @endphp
 
 <div class="container">
@@ -114,10 +127,8 @@
     <table class="info-section">
         <tr>
             <td style="width: 60%; vertical-align: top;">
-                <strong>Informasi Pemasok:</strong><br>
-                {{ $record->supplier->name ?? '-' }}<br>
-                {{ $record->supplier->address ?? 'Alamat tidak tersedia' }}<br>
-                {{ $record->supplier->phone_number ?? 'Telepon tidak tersedia' }}
+                <strong>Daftar Pemasok:</strong><br>
+                {{ $supplierNames ?: 'Tidak ada data pemasok' }}
             </td>
             <td style="width: 40%; text-align: right; vertical-align: top;">
                 <strong>No. PO:</strong> {{ $record->po_number }}<br>
@@ -126,24 +137,37 @@
                     <strong>Tanggal Penerimaan:</strong> {{ $record->updated_at->translatedFormat('d F Y') }}
                 @endif
             </td>
-            </tr>
+        </tr>
     </table>
 
     <table class="items-table">
         <thead>
             <tr>
-                <th>Nama Barang</th>
-                <th style="width: 10%;" class="text-center">Jumlah</th>
+                <th style="width: 25%;">Nama Barang</th>
+                <th style="width: 20%;">Pemasok</th> <th style="width: 10%;" class="text-center">Jumlah</th>
                 <th style="width: 10%;" class="text-center">Satuan</th>
-                <th style="width: 20%;" class="text-center">Harga Satuan</th>
+                <th style="width: 15%;" class="text-center">Harga Satuan</th>
                 <th style="width: 20%;" class="text-center">Total Harga</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($record->items as $item)
+            @foreach ($items as $item)
+            @php
+                $dbItem = $supplierItems->get($item['supplier_item_id']);
+                $itemName = $dbItem ? $dbItem->nama_item : 'Produk Dihapus';
+                
+                // Ambil nama supplier per baris
+                $rowSupplierName = '-';
+                if (!empty($item['supplier_id'])) {
+                    $supp = \App\Models\Supplier::find($item['supplier_id']);
+                    $rowSupplierName = $supp ? $supp->name : '-';
+                } elseif ($dbItem && $dbItem->supplier) {
+                    $rowSupplierName = $dbItem->supplier->name;
+                }
+            @endphp
             <tr>
-                <td>{{ \App\Models\SupplierItem::find($item['supplier_item_id'])->nama_item ?? 'Produk Dihapus' }}</td>
-                <td class="text-center">{{ $item['quantity'] }}</td>
+                <td>{{ $itemName }}</td>
+                <td>{{ $rowSupplierName }}</td> <td class="text-center">{{ $item['quantity'] }}</td>
                 <td class="text-center">{{ $item['unit'] ?? 'pcs' }}</td>
                 <td class="text-right">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td>
                 <td class="text-right">Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}</td>
@@ -152,7 +176,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="4" class="text-right"><strong>Total Pembelian</strong></td>
+                <td colspan="5" class="text-right"><strong>Total Pembelian</strong></td>
                 <td class="text-right"><strong>Rp {{ number_format($record->grand_total, 0, ',', '.') }}</strong></td>
             </tr>
         </tfoot>
@@ -163,7 +187,7 @@
             <td style="width: 50%;">
                 <p>Dibuat Oleh,</p>
                 <div class="signature-space"></div>
-                <p style="text-decoration: underline;"><strong>( Nama Admin Sparepart )</strong></p>
+                <p style="text-decoration: underline;"><strong>( M. N. Aef )</strong></p>
                 <p>Adm. Sparepart</p>
             </td>
             <td style="width: 50%;">
@@ -173,7 +197,7 @@
                         <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents($ttdPath)) }}" alt="Tanda Tangan" style="height: 50px; width: auto;">
                     @endif
                 </div>
-                <p style="text-decoration: underline;"><strong>( Nama Manajer )</strong></p>
+                <p style="text-decoration: underline;"><strong>( Gunawan )</strong></p>
                 <p>Mgr. Engineering</p>
             </td>
         </tr>

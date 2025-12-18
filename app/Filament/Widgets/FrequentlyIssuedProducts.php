@@ -26,7 +26,7 @@ class FrequentlyIssuedProducts extends ChartWidget
                 [
                     'label' => 'Jumlah Keluar',
                     'data' => $data->pluck('total_quantity')->toArray(),
-                    'backgroundColor' => '#f59e0b',
+                    'backgroundColor' => 'Blue',
                 ],
             ],
             'labels' => $data->pluck('name')->toArray(),

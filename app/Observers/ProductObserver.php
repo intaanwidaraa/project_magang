@@ -3,31 +3,23 @@
 namespace App\Observers;
 
 use App\Models\Product;
-use Illuminate\Support\Str;
 
 class ProductObserver
 {
     /**
-     * Handle the Product "created" event.
+     * Handle the Product "creating" event.
      */
-
     public function creating(Product $product): void
     {
-        if (empty($product->sku)) {
-            $prefix = Str::upper(Str::substr($product->name, 0, 3));
-
-            $product->sku = $prefix . '-001';
-        }
+        // Dikosongin supaya input manual lu GAK diganti otomatis
     }
 
+    /**
+     * Handle the Product "created" event.
+     */
     public function created(Product $product): void
     {
-        $prefix = Str::upper(Str::substr($product->name, 0, 3));
-
-        $paddedId = str_pad($product->id, 3, '0', STR_PAD_LEFT);
-
-        $product->sku = $prefix . '-' . $paddedId;
-        $product->save();
+        // Dikosongin supaya dia GAK update ulang (nimpa) SKU setelah disimpan
     }
 
     /**
