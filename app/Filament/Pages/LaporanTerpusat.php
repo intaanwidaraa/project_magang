@@ -392,7 +392,25 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                         'completed' => 'success', 
                         default => 'secondary',
                     }),
-                TextColumn::make('supplier.name')->label('Supplier')->searchable(),
+                TextColumn::make('supplier_names') // Ganti key agar tidak konflik dengan relasi
+                    ->label('Supplier')
+                    ->state(function (PurchaseOrder $record) {
+                        if (empty($record->items)) return '-';
+                        
+                        // Handle jika items masih string JSON
+                        $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+                        
+                        // Ambil ID Supplier Unik
+                        $ids = collect($items)->pluck('supplier_id')->filter()->unique();
+                        
+                        // Ambil Nama Supplier
+                        return \App\Models\Supplier::whereIn('id', $ids)->pluck('name')->join(', ');
+                    })
+                    ->wrap()
+                    ->limit(50)
+                    ->searchable(), // Searchable mungkin perlu custom query jika ingin detail
+                // -----------------------------------------
+
                 TextColumn::make('created_at')->label('Tanggal Pemesanan')->date('d M Y')->sortable(),
                 TextColumn::make('updated_at')->label('Tanggal Penerimaan')->date('d M Y')->sortable(),
             ],
@@ -670,22 +688,32 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
     {
         $supplierItemIds = $records->pluck('items.*.supplier_item_id')->flatten()->unique()->filter();
         $supplierItems = SupplierItem::whereIn('id', $supplierItemIds)->get()->keyBy('id');
+        $allSupplierIds = $records->pluck('items.*.supplier_id')->flatten()->unique()->filter();
+        $suppliers = Supplier::whereIn('id', $allSupplierIds)->pluck('name', 'id');
 
         $flatData = collect();
 
         foreach ($records as $record) { 
-            if (empty($record->items)) {
+            $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+
+            if (empty($items) || !is_array($items)) {
                 continue;
             }
-            foreach ($record->items as $item) { 
+
+            foreach ($items as $item) { 
                 $supplierItem = $supplierItems->get($item['supplier_item_id']);
                 $totalItem = ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
+                $suppId = $item['supplier_id'] ?? null;
+                $supplierName = ($suppId && isset($suppliers[$suppId])) ? $suppliers[$suppId] : 'N/A';
+                if ($supplierName === 'N/A' && $record->supplier) {
+                    $supplierName = $record->supplier->name;
+                }
 
                 $flatData->push([
                     'tgl_pesan'     => $record->created_at->format('d-m-Y'),
                     'tgl_terima'    => $record->status === 'completed' ? $record->updated_at->format('d-m-Y') : '-',
                     'no_fppb'       => $record->po_number,
-                    'supplier'      => $record->supplier->name ?? 'N/A',
+                    'supplier'      => $supplierName, 
                     'nama_barang'   => $supplierItem->nama_item ?? 'N/A',
                     'qty'           => $item['quantity'] ?? 0,
                     'satuan'        => $item['unit'] ?? 'pcs',
@@ -693,10 +721,11 @@ class LaporanTerpusat extends Page implements HasForms, HasTable
                     'total_item'    => $totalItem,
                     'pembayaran'    => ucfirst($record->payment_method),
                     'status'        => ucfirst($record->status),
-                    'keterangan_po' => $record->notes,
+                    'keterangan'    => $record->notes ?? '-', 
                 ]);
             }
         }
+        
         return new BarangMasukExport($flatData);
     }
 

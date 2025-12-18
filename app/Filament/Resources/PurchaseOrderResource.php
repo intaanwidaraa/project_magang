@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PurchaseOrderResource\Pages;
 use App\Models\PurchaseOrder;
 use App\Models\Product;
+use App\Models\Supplier; 
 use App\Models\SupplierItem;
 use App\Models\StockMovement;
 use Filament\Forms;
@@ -14,7 +15,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Number;
 use Carbon\Carbon;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
@@ -33,287 +33,355 @@ class PurchaseOrderResource extends Resource
     protected static ?string $pluralModelLabel = 'Barang Masuk';
     protected static ?string $navigationGroup = 'Manajemen Stok';
 
-
-    public static function form(Form $form): Form
+   public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Grid::make()->columns(3)->schema([
-                    Forms\Components\Group::make()->schema([
-                        Forms\Components\Section::make('Informasi Pembelian')
+                // --- BAGIAN 1: INFORMASI PEMBELIAN ---
+                Forms\Components\Section::make('Informasi Pembelian')
+                    ->schema([
+                        Forms\Components\TextInput::make('po_number')
+                            ->label('Nomor FPPB')
+                            ->placeholder('Masukkan nomor secara manual')
+                            ->required()
+                            ->unique(ignoreRecord: true)
+                            ->default(fn () => (PurchaseOrder::latest('id')->first()->po_number ?? 0) + 1),
+                        
+                        Forms\Components\DatePicker::make('created_at')
+                            ->label('Tanggal Pembelian')
+                            ->required()
+                            ->default(now()),
+                        
+                        Forms\Components\DatePicker::make('budget_start_date')
+                            ->label('Periode Budget Mulai')
+                            ->required()
+                            ->default(now()),
+                        
+                        Forms\Components\DatePicker::make('budget_end_date')
+                            ->label('Periode Budget Selesai')
+                            ->required()
+                            ->default(now()->addDays(5)) 
+                            ->minDate(fn (callable $get) => $get('budget_start_date')),
+                        
+                        Forms\Components\TextInput::make('requester_info')
+                            ->label('Dept / Cost Centre')
+                            ->placeholder('Contoh: ENGINEERING / 450')
+                            ->required()
+                            ->columnSpanFull(),
+
+                        // Hidden Field: Mengisi supplier_id utama agar tidak error database
+                        Forms\Components\Hidden::make('supplier_id')
+                            ->default(fn() => Supplier::first()?->id), 
+
+                    ])->columns(2),
+
+                // --- BAGIAN 2: PILIH PRODUK (QUICK ADD MULTI-SUPPLIER) ---
+                Forms\Components\Section::make('Pilih Produk (Mode Cepat)')
+                    ->description('Pilih supplier, lalu centang produk. Jika produk belum ada, klik tombol tambah di bawah list.')
+                    ->schema([
+                        
+                        // 1. Dropdown Filter Supplier (DENGAN FITUR CREATE NEW)
+                        Forms\Components\Select::make('filter_supplier_id')
+                            ->label('Pilih Supplier') 
+                            ->options(Supplier::all()->pluck('name', 'id'))
+                            ->searchable()
+                            ->preload()
+                            ->reactive()
+                            ->dehydrated(false) // Jangan simpan ke DB
+                            
+                            // --- FITUR CREATE SUPPLIER BARU ---
+                            ->createOptionForm([
+                                Forms\Components\TextInput::make('name')->label('Nama Supplier')->required(),
+                                Forms\Components\TextInput::make('phone_number')->label('Nomor Telepon')->required(),
+                                Forms\Components\TextInput::make('address')->label('Alamat')->required(),
+                            ])
+                            ->createOptionUsing(function (array $data) {
+                                return Supplier::create($data)->id;
+                            })
+                            // ----------------------------------
+
+                            ->afterStateUpdated(function (callable $set) {
+                                $set('temp_selected_products', []); 
+                            })
+                            ->columnSpanFull(),
+
+                        // 2. Daftar Produk (Checkbox)
+                        Forms\Components\Group::make()
                             ->schema([
-                                Forms\Components\TextInput::make('po_number')
-                                    ->label('Nomor FPPB')
-                                    ->placeholder('Masukkan nomor secara manual') 
-                                    ->required()
-                                    ->unique(ignoreRecord: true), 
-                                Forms\Components\DatePicker::make('created_at')
-                                    ->label('Tanggal Pembelian')
-                                    ->required()
-                                    ->default(now()),
-                                Forms\Components\DatePicker::make('budget_start_date')
-                                    ->label('Periode Budget Mulai')
-                                    ->required()
-                                    ->default(now()),
-                                Forms\Components\DatePicker::make('budget_end_date')
-                                    ->label('Periode Budget Selesai')
-                                    ->required()
-                                    ->default(now()->addDays(5)) 
-                                    ->minDate(fn (callable $get) => $get('budget_start_date')),
-                                Forms\Components\TextInput::make('requester_info')
-                                    ->label('Dept / Cost Centre')
-                                    ->placeholder('Contoh: ENGINEERING / 450')
-                                    ->required()
-                                    ->columnSpanFull(),
-                                Forms\Components\Select::make('supplier_id')
-                                    ->label('Pemasok')
-                                    ->relationship('supplier', 'name')
+                                Forms\Components\CheckboxList::make('temp_selected_products')
+                                    ->hiddenLabel()
+                                    ->options(function (callable $get) {
+                                        $supplierId = $get('filter_supplier_id');
+                                        if (!$supplierId) return [];
+                                        
+                                        return SupplierItem::where('supplier_id', $supplierId)
+                                            ->get()
+                                            ->mapWithKeys(function ($item) {
+                                                return [$item->id => "{$item->nama_item} - Rp " . number_format($item->harga, 0, ',', '.')];
+                                            });
+                                    })
                                     ->searchable()
-                                    ->preload()
+                                    ->bulkToggleable()
+                                    ->columns(3)
+                                    ->reactive()
+                                    ->dehydrated(false)
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        // Logic Add to Repeater
+                                        $currentSupplierId = $get('filter_supplier_id');
+                                        if (!$currentSupplierId) return;
+
+                                        $currentRepeaterItems = collect($get('items') ?? []);
+                                        $otherItems = $currentRepeaterItems->filter(fn($item) => ($item['supplier_id'] ?? null) != $currentSupplierId);
+                                        $existingMyItems = $currentRepeaterItems
+                                            ->filter(fn($item) => ($item['supplier_id'] ?? null) == $currentSupplierId)
+                                            ->keyBy('supplier_item_id');
+
+                                        $newItemsFromCheckbox = collect($state)->map(function ($supplierItemId) use ($currentSupplierId, $existingMyItems) {
+                                            if ($existingMyItems->has($supplierItemId)) return $existingMyItems->get($supplierItemId);
+                                            $dbItem = SupplierItem::with('product')->find($supplierItemId);
+                                            if (!$dbItem) return null;
+
+                                            return [
+                                                'supplier_id'      => $currentSupplierId,
+                                                'supplier_item_id' => $dbItem->id,
+                                                'product_id'       => $dbItem->product_id,
+                                                'coa_name'         => null,
+                                                'quantity'         => 1,
+                                                'unit'             => $dbItem->product?->unit ?? 'PCS',
+                                                'price'            => $dbItem->harga,
+                                                'total'            => $dbItem->harga,
+                                            ];
+                                        })->filter();
+
+                                        $finalItems = $newItemsFromCheckbox->merge($otherItems)->values()->toArray();
+                                        $set('items', $finalItems);
+                                        $set('grand_total', collect($finalItems)->sum('total'));
+                                        
+                                        if (count($finalItems) > 0) $set('supplier_id', $finalItems[0]['supplier_id']);
+                                    }),
+                            ])
+                            ->visible(fn (callable $get) => filled($get('filter_supplier_id')))
+                            ->extraAttributes([
+                                'style' => 'max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; background-color: #fff;', 
+                            ]),
+
+                        // 3. ACTION TAMBAH PRODUK BARU (DISISIPKAN DI SINI)
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('addNewSupplierItem')
+                                ->label('(+) Tambah Produk Baru ke Supplier Ini')
+                                ->color('success')
+                                ->icon('heroicon-o-plus-circle')
+                                ->visible(fn (callable $get) => filled($get('filter_supplier_id')))
+                                ->form([
+                                    Forms\Components\Select::make('product_id')
+                                        ->label('Pilih dari Master Produk')
+                                        ->options(Product::query()->pluck('name', 'id'))
+                                        ->searchable()
+                                        ->required()
+                                        ->reactive()
+                                        ->createOptionForm([
+                                            Forms\Components\TextInput::make('name')->label('Nama Produk')->required(),
+                                            Forms\Components\TextInput::make('sku')->label('SKU')->required(),
+                                            Forms\Components\Radio::make('is_stock')
+                                                ->label('Tipe Barang')
+                                                ->boolean()
+                                                ->options([
+                                                    1 => 'Stok (Inventory)',
+                                                    0 => 'Non-Stok (Jasa/Langsung)',
+                                                ])
+                                                ->default(true)
+                                                ->inline()
+                                                ->reactive()
+                                                ->required(),
+                                            Forms\Components\TextInput::make('unit')->label('Satuan')->default('PCS')->required(),
+                                            Forms\Components\TextInput::make('minimum_stock')->label('Stok Minimum')->numeric()->default(1),
+                                        ])
+                                        ->createOptionUsing(fn (array $data) => Product::create($data)->id)
+                                        ->afterStateUpdated(fn ($state, callable $set) => $set('nama_item', Product::find($state)?->name)),
+                                    
+                                    Forms\Components\TextInput::make('nama_item')->label('Nama Item (Supplier)')->required(),
+                                    Forms\Components\TextInput::make('harga')->label('Harga Supplier')->numeric()->prefix('Rp')->required(),
+                                ])
+                                ->action(function (array $data, callable $get, callable $set) {
+                                    $currentSupplierId = $get('filter_supplier_id');
+                                    
+                                    // 1. Buat Item Baru di Database
+                                    $newItem = SupplierItem::create([
+                                        'supplier_id' => $currentSupplierId,
+                                        'product_id' => $data['product_id'],
+                                        'nama_item' => $data['nama_item'],
+                                        'harga' => $data['harga'],
+                                    ]);
+
+                                    // 2. Langsung Masukkan ke Repeater (Paling Atas)
+                                    $currentRepeaterItems = collect($get('items') ?? []);
+                                    $dbProduct = Product::find($data['product_id']);
+
+                                    $newItemRow = [
+                                        'supplier_id'      => $currentSupplierId,
+                                        'supplier_item_id' => $newItem->id,
+                                        'product_id'       => $newItem->product_id,
+                                        'coa_name'         => null,
+                                        'quantity'         => 1,
+                                        'unit'             => $dbProduct->unit ?? 'PCS',
+                                        'price'            => $newItem->harga,
+                                        'total'            => $newItem->harga,
+                                    ];
+
+                                    $finalItems = collect([$newItemRow])->merge($currentRepeaterItems)->values()->toArray();
+
+                                    $set('items', $finalItems);
+                                    $set('grand_total', collect($finalItems)->sum('total'));
+                                    
+                                    if (count($finalItems) > 0) $set('supplier_id', $finalItems[0]['supplier_id']);
+
+                                    // 3. Update Checkbox
+                                    $currentSelection = $get('temp_selected_products') ?? [];
+                                    $currentSelection[] = $newItem->id;
+                                    $set('temp_selected_products', $currentSelection);
+
+                                    Notification::make()->title('Produk ditambahkan!')->success()->send();
+                                }),
+                        ])->alignEnd(),
+                    ]),
+
+                // --- BAGIAN 3: TABEL RINCIAN ---
+                Forms\Components\Section::make('Rincian Pembelian Final')
+                    ->schema([
+                        Forms\Components\Repeater::make('items')
+                            ->label('Daftar Barang')
+                            ->schema([
+                                Forms\Components\Hidden::make('product_id'),
+                                
+                                Forms\Components\Select::make('supplier_id')
+                                    ->label('Supplier')
+                                    ->options(Supplier::all()->pluck('name', 'id'))
+                                    ->required()
+                                    ->reactive()
+                                    // Backup Create Option di repeater
                                     ->createOptionForm([
                                         Forms\Components\TextInput::make('name')->required(),
                                         Forms\Components\TextInput::make('phone_number')->required(),
                                         Forms\Components\TextInput::make('address')->required(),
                                     ])
-                                    ->reactive()
-                                    ->afterStateUpdated(function (callable $set) {
-                                        $set('products', []);
-                                        $set('items', []);
-                                    })
-                                    ->required()
-                                    ->columnSpanFull(),
-    
-                            ])->columns(2),
-                        Forms\Components\Section::make('Detail Barang Pesanan')
-                            ->description('Pilih produk dari daftar, lalu atur jumlahnya di bawah.')
-                            ->schema([
-                        Forms\Components\CheckboxList::make('products')
-                            ->label('Pilih Produk dari Supplier')
-                                    ->searchable()
-                                    ->options(fn (callable $get) =>
-                                        $get('supplier_id')
-                                            ? SupplierItem::where('supplier_id', $get('supplier_id'))->pluck('nama_item', 'id')
-                                            : []
+                                    ->createOptionUsing(fn (array $data) => Supplier::create($data)->id)
+                                    ->afterStateUpdated(fn (callable $set) => $set('supplier_item_id', null))
+                                    ->columnSpan(3),
+
+                                Forms\Components\Select::make('supplier_item_id')
+                                    ->label('Barang')
+                                    ->options(fn (callable $get) => 
+                                        $get('supplier_id') 
+                                        ? SupplierItem::where('supplier_id', $get('supplier_id'))->pluck('nama_item', 'id') 
+                                        : []
                                     )
-                                    ->afterStateHydrated(function (callable $set, callable $get) {
-                                        $selectedItemIds = collect($get('items'))->pluck('supplier_item_id')->all();
-                                        $set('products', $selectedItemIds);
-                                    })
+                                    ->required()
+                                    ->searchable()
+                                    ->preload()
                                     ->reactive()
-                                    ->columns(3)
-                                    ->dehydrated(false)
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                        $oldItems = collect($get('items') ?? []);
-
-                                        $selectedSupplierItems = SupplierItem::with('product')->whereIn('id', $state)->get()->keyBy('id');
-
-                                        $newItems = collect($state)->map(function ($id) use ($oldItems, $selectedSupplierItems) { // <-- Variabel ditambahkan di sini
-                                            $existing = $oldItems->firstWhere('supplier_item_id', $id);
-                                            $supplierItem = $selectedSupplierItems->get($id);
-
-                                            if (!$supplierItem) {
-                                                return null; 
-                                            }
-
-                                            return [
-                                                'supplier_item_id' => $id,
-                                                'product_id'       => $supplierItem->product_id,
-                                                'quantity'         => $existing['quantity'] ?? 1,
-                                                'price'            => $supplierItem->harga ?? 0,
-                                                'unit'             => $supplierItem->product?->unit ?? 'pcs',
-                                                'total'            => ($existing['quantity'] ?? 1) * ($supplierItem->harga ?? 0),
-                                            'is_consumable' => $supplierItem->product?->is_consumable ?? false,
-                                            'coa_name' => $existing['coa_name'] ?? null,
-                                            ];
-
-                                        })->filter();
-
-                                        $set('items', $newItems->values()->toArray());
-                                        $grandTotal = $newItems->sum('total');
-                                        $set('grand_total', $grandTotal);
-                                    }),
-                        Forms\Components\Actions::make([
-                        Forms\Components\Actions\Action::make('addNewSupplierItem')
-                                    ->label('(+) Tambah Produk Baru ke Supplier Ini')
-                                        ->color('success')
-                                        ->icon('heroicon-o-plus-circle')
-                                        ->visible(fn (callable $get) => filled($get('supplier_id')))
-                                        ->form([
-                                            Forms\Components\Select::make('product_id')
-                                                ->label('Pilih dari Master Produk')
-                                                ->options(Product::query()->pluck('name', 'id'))
-                                                ->searchable()
-                                                ->required()
-                                                ->required()
-                                                ->reactive()
-                                                ->createOptionForm([
-                                                    Forms\Components\TextInput::make('name')
-                                                        ->label('Nama Produk')
-                                                        ->required(),
-                                                    Forms\Components\TextInput::make('sku')
-                                                        ->label('SKU (Kode Unik)')
-                                                        ->readOnly()
-                                                        ->placeholder('Akan dibuat otomatis setelah disimpan'),
-                                                    Forms\Components\TextInput::make('unit')->label('Satuan (pcs, box, dll)')->default('pcs')->required(),
-                                                    Forms\Components\TextInput::make('lifetime_penggunaan')
-                                                        ->label('Lifetime Penggunaan')
-                                                        ->numeric()
-                                                        ->required()
-                                                        ->default(0)
-                                                        ->suffix('hari')
-                                                        ->helperText('Masa ideal penggunaan produk dalam hari.'),
-                                                    Forms\Components\TextInput::make('minimum_stock')->label('Stok Minimum')->numeric()->default(0),
-                                                ])
-                                                ->createOptionUsing(function (array $data): int {
-                                                    $newProduct = Product::create($data);
-                                                    return $newProduct->id;
-                                                })
-                                                ->afterStateUpdated(function ($state, callable $set) {
-                                                    $product = Product::find($state);
-                                                    if($product) {
-                                                        $set('nama_item', $product->name);
-                                                    }
-                                                }),
-                        Forms\Components\TextInput::make('nama_item')
-                                                ->label('Nama Item (versi supplier)')
-                                                ->helperText('Nama produk ini yang akan muncul di daftar pilihan.')
-                                                ->required(),
-                                            Forms\Components\TextInput::make('harga')
-                                                ->label('Harga dari Supplier')
-                                                ->numeric()
-                                                ->prefix('Rp')
-                                                ->required(),
-                                        ])
-                                        ->action(function (array $data, callable $get, callable $set) {
-                                            $supplierId = $get('supplier_id');
-
-                                            $newSupplierItem = SupplierItem::create([
-                                                'supplier_id' => $supplierId,
-                                                'product_id' => $data['product_id'],
-                                                'nama_item' => $data['nama_item'],
-                                                'harga' => $data['harga'],
-                                            ]);
-
-                                            $currentSelectedProducts = $get('products');
-                                            $currentSelectedProducts[] = $newSupplierItem->id;
-                                            $set('products', $currentSelectedProducts);
-
-                                            Notification::make()
-                                                ->title('Produk baru berhasil ditambahkan ke supplier')
-                                                ->success()
-                                                ->send();
-                                        })
-                                ])->alignEnd(),
-
-
-                                Forms\Components\Repeater::make('items')
-                                    ->label('Rincian Pembelian')
-                                    ->schema([
-                                        Forms\Components\Hidden::make('product_id'),
-                                        Forms\Components\Select::make('supplier_item_id')
-                                            ->label('Nama Barang')
-                                            ->options(fn (callable $get) => SupplierItem::where('supplier_id', $get('../../supplier_id'))->pluck('nama_item', 'id'))
-                                            ->disabled()->dehydrated()
-                                            ->columnSpan(2), // <-- Beri 2 kolom agar lebih lebar
-
-                                        // ▼▼▼ INI BLOK COA YANG BARU DITAMBAHKAN ▼▼▼
-                                        Forms\Components\Select::make('coa_name')
-                                            ->label('COA')
-                                            ->options([
-                                                // (Salin semua options COA Anda ke sini)
-                                                'PEMAKAIAN PRODUKSI (100.05.110)' => 'PEMAKAIAN PRODUKSI (100.05.110)',
-                                                'SISA PRODUKSI (100.05.110)' => 'SISA PRODUKSI (100.05.110)',
-                                                'PENJUALAN TUNAI (420.01.101)' => 'PENJUALAN TUNAI (420.01.101)',
-                                                'RETUR PEMBELIAN BAHAN BAKU (430.02.107)' => 'RETUR PEMBELIAN BAHAN BAKU (430.02.107)',
-                                                'RUSAK, SUSUT DAN HEMAT (430.02.109)' => 'RUSAK, SUSUT DAN HEMAT (430.02.109)',
-                                                'SAMPLE (430.02.109)' => 'SAMPLE (430.02.109)',
-                                                'REPACKING DI DISTRIBUTOR (430.02.109)' => 'REPACKING DI DISTRIBUTOR (430.02.109)',
-                                                'GANTI KARDUS (430.02.109)' => 'GANTI KARDUS (430.02.109)',
-                                                'PENJUALAN BAHAN BAKU (430.02.110)' => 'PENJUALAN BAHAN BAKU (430.02.110)',
-                                                'ADJUSTMENT STOCK (430.02.111)' => 'ADJUSTMENT STOCK (430.02.111)',
-                                                'PEMAKAIAN BATU BARA (450.02.106)' => 'PEMAKAIAN BATU BARA (450.02.106)',
-                                                'PERBAIKAN BANGUNAN PABRIK (450.02.111)' => 'PERBAIKAN BANGUNAN PABRIK (450.02.111)',
-                                                'PERBAIKAN MESIN PRODUKSI (450.02.112)' => 'PERBAIKAN MESIN PRODUKSI (450.02.112)',
-                                                'PERBAIKAN PERALATAN PABRIK (450.02.113)' => 'PERBAIKAN PERALATAN PABRIK (450.02.113)',
-                                                'PERBAIKAN KEPERLUAN PRODUKSI (450.02.121)' => 'PERBAIKAN KEPERLUAN PRODUKSI (450.02.121)',
-                                                // ... (Tambahkan sisa daftar COA Anda)
-                                            ])
-                                            ->searchable()
-                                            ->preload()
-                                            ->required()
-                                            ->columnSpan(2), // <-- Beri 2 kolom agar lebih lebar
-                                        // ▲▲▲ SELESAI BLOK COA ▲▲▲
-
-                                        Forms\Components\TextInput::make('quantity')
-                                            ->label('Jumlah')
-                                            ->numeric()
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                $set('total', ($state ?? 0) * ($get('price') ?? 0));
-                                                $allItems = $get('../../items');
-                                                $grandTotal = collect($allItems)->sum(fn($item) => $item['total'] ?? 0);
-                                                $set('../../grand_total', $grandTotal);
-                                            }),
-                                            
-                                        Forms\Components\TextInput::make('unit')
-                                            ->label('Satuan')
-                                            ->disabled()
-                                            ->dehydrated(),
-                                            
-                                        Forms\Components\TextInput::make('price')
-                                            ->label('Harga Satuan')
-                                            ->numeric()
-                                            ->prefix('Rp')
-                                            ->dehydrated()
-                                            ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                                $set('total', ($state ?? 0) * ($get('quantity') ?? 0));
-                                                $allItems = $get('../../items');
-                                                $grandTotal = collect($allItems)->sum(fn($item) => $item['total'] ?? 0);
-                                                $set('../../grand_total', $grandTotal);
-                                            }),
-                                            
-                                        Forms\Components\TextInput::make('total')->label('Total')->numeric()->prefix('Rp')->disabled()->dehydrated(),
-                                    ])
-                                    ->columns(8) // <--- UBAH JADI 8 (2 + 2 + 1 + 1 + 1 + 1)
-                                    ->reactive()
-                                    ->afterStateUpdated(function ($state, callable $set) {
-                                        $grandTotal = collect($state)->sum(fn($item) => $item['total'] ?? 0);
-                                        $set('grand_total', $grandTotal);
+                                        $item = SupplierItem::with('product')->find($state);
+                                        if ($item) {
+                                            $set('product_id', $item->product_id);
+                                            $set('price', $item->harga);
+                                            $set('unit', $item->product?->unit ?? 'PCS');
+                                            $set('total', $item->harga * ($get('quantity') ?? 1));
+                                        }
                                     })
-                                    ->reorderable(false)
-                                    ->deleteAction(fn (Forms\Components\Actions\Action $action) => $action->iconButton()),
+                                    ->columnSpan(4), 
 
-                                Forms\Components\TextInput::make('grand_total')
-                                    ->label('Total Pesanan')
+                                Forms\Components\Select::make('coa_name')
+                                    ->label('COA')
+                                    ->options([
+                                        'PEMAKAIAN PRODUKSI (100.05.110)' => 'PEMAKAIAN PRODUKSI (100.05.110)',
+                                        'SISA PRODUKSI (100.05.110)' => 'SISA PRODUKSI (100.05.110)',
+                                        'ASET DALAM PENYELESAIAN (110.01.100)' => 'ASET DALAM PENYELESAIAN (110.01.100)',
+                                        'PENJUALAN TUNAI (420.01.101)' => 'PENJUALAN TUNAI (420.01.101)',
+                                        'RETUR PEMBELIAN BAHAN BAKU (430.02.107)' => 'RETUR PEMBELIAN BAHAN BAKU (430.02.107)',
+                                        'KEPERLUAN PABRIKASI (430.02.109)' => 'KEPERLUAN PABRIKASI (430.02.109)',
+                                        'RUSAK, SUSUT DAN HEMAT (430.02.109)' => 'RUSAK, SUSUT DAN HEMAT (430.02.109)',
+                                        'SAMPLE (430.02.109)' => 'SAMPLE (430.02.109)',
+                                        'REPACKING DI DISTRIBUTOR (430.02.109)' => 'REPACKING DI DISTRIBUTOR (430.02.109)',
+                                        'GANTI KARDUS (430.02.109)' => 'GANTI KARDUS (430.02.109)',
+                                        'PENJUALAN BAHAN BAKU (430.02.110)' => 'PENJUALAN BAHAN BAKU (430.02.110)',
+                                        'ADJUSTMENT STOCK (430.02.111)' => 'ADJUSTMENT STOCK (430.02.111)',
+                                        'PEMAKAIAN BATU BARA (450.02.106)' => 'PEMAKAIAN BATU BARA (450.02.106)',
+                                        'BIAYA KEPERLUAN PRODUKSI (450.02.119)' => 'BIAYA KEPERLUAN PRODUKSI (450.02.119)',
+                                        'PERBAIKAN BANGUNAN PABRIK (450.02.111)' => 'PERBAIKAN BANGUNAN PABRIK (450.02.111)',
+                                        'PERBAIKAN MESIN PRODUKSI (450.02.112)' => 'PERBAIKAN MESIN PRODUKSI (450.02.112)',
+                                        'PERBAIKAN PERALATAN PABRIK (450.02.113)' => 'PERBAIKAN PERALATAN PABRIK (450.02.113)',
+                                        'PERBAIKAN KEPERLUAN PRODUKSI (450.02.121)' => 'PERBAIKAN KEPERLUAN PRODUKSI (450.02.121)',
+                                        'PERBAIKAN MESIN PACKING (450.02.126)' => 'PERBAIKAN MESIN PACKING (450.02.126)',
+                                        'PERBAIKAN UTILITY (450.02.127)' => 'PERBAIKAN UTILITY (450.02.127)',
+                                        'ATK (500.05.100)' => 'ATK (500.05.100)',
+                                        'P3K (500.06.101)' => 'P3K (500.06.101)',
+                                        'PERBAIKAN BANGUNAN (510.05.100)' => 'PERBAIKAN BANGUNAN (510.05.100)',
+                                        'PERBAIKAN INVENTARIS KANTOR (510.05.101)' => 'PERBAIKAN INVENTARIS KANTOR (510.05.101)',
+                                        'BIAYA PEMELIHARAAN INVENTARIS KANTOR (510.05.101)' => 'BIAYA PEMELIHARAAN INVENTARIS KANTOR (510.05.101)',
+                                        'PERBAIKAN MOBIL BAGIAN KANTOR (510.06.101)' => 'PERBAIKAN MOBIL BAGIAN KANTOR (510.06.101)',
+                                        'PERBAIKAN MOTOR BAGIAN KANTOR (510.06.102)' => 'PERBAIKAN MOTOR BAGIAN KANTOR (510.06.102)',
+                                        'BIAYA RUMAH HARJA MULIA (600.02.100)' => 'BIAYA RUMAH HARJA MULIA (600.02.100)',
+                                    ])
+                                    ->searchable()
+                                    ->required()
+                                    ->columnSpan(3),
+
+                                Forms\Components\TextInput::make('quantity')
+                                    ->label('Jml')
+                                    ->numeric()
+                                    ->default(1)
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $set('total', ($state ?? 0) * ($get('price') ?? 0));
+                                        $set('../../grand_total', collect($get('../../items'))->sum('total'));
+                                    })
+                                    ->columnSpan(1),
+
+                                Forms\Components\TextInput::make('unit')->label('Sat')->disabled()->dehydrated()->columnSpan(1),
+
+                                Forms\Components\TextInput::make('price')
+                                    ->label('Harga')
                                     ->numeric()
                                     ->prefix('Rp')
-                                    ->disabled()
-                                    ->dehydrated(),
-                            ]),
-                    ])->columnSpan(2),
-                        Forms\Components\Group::make()->schema([
-                        Forms\Components\Section::make('Ringkasan & Opsi')
-                            ->schema([
-                                Forms\Components\Placeholder::make('estimated_arrival_info')
-                                    ->label('Estimasi Kedatangan')
-                                    ->content(function () {
-                                        $eta = Carbon::now()->addDays(14)->locale('id_ID');
-                                        return $eta->translatedFormat('l, d F Y') . ' (14 hari dari sekarang)';
-                                    }),
-                                Forms\Components\Select::make('payment_method')
-                                    ->label('Metode Pembayaran')
-                                    ->options(['po' => 'PO', 'cash' => 'Cash', 'urgent' => 'Urgent'])
-                                    ->required(),
-                            ]),
-                        Forms\Components\Section::make('Keterangan')
-                            ->schema([
-                                Forms\Components\Textarea::make('notes')
-                                    ->label('Catatan Tambahan (Opsional)')
-                                    ->rows(4),
-                            ]),
-                    ])->columnSpan(1),
-                ]),
+                                    ->dehydrated()
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $set('total', ($state ?? 0) * ($get('quantity') ?? 0));
+                                        $set('../../grand_total', collect($get('../../items'))->sum('total'));
+                                    })
+                                    ->columnSpan(2),
+
+                                Forms\Components\TextInput::make('total')->label('Total')->numeric()->prefix('Rp')->disabled()->dehydrated()->columnSpan(2), 
+                            ])
+                            ->columns(16) 
+                            ->reactive()
+                            ->reorderable(false)
+                            ->deleteAction(fn ($action) => $action->iconButton()),
+
+                        Forms\Components\TextInput::make('grand_total')
+                            ->label('Total Pesanan')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->disabled()
+                            ->dehydrated()
+                            ->columnSpanFull()
+                            ->extraInputAttributes(['style' => 'font-size: 1.5rem; font-weight: bold; text-align: right;']),
+                    ]),
+
+                // --- BAGIAN 4: FOOTER ---
+                Forms\Components\Section::make('Opsi & Keterangan')
+                    ->schema([
+                        Forms\Components\Grid::make(2)->schema([
+                            Forms\Components\Placeholder::make('estimated_arrival_info')
+                                ->label('Estimasi Kedatangan')
+                                ->content(fn () => Carbon::now()->addDays(14)->locale('id_ID')->translatedFormat('l, d F Y') . ' (14 hari)'),
+                            Forms\Components\Select::make('payment_method')
+                                ->label('Metode Pembayaran')
+                                ->options(['po' => 'PO', 'cash' => 'Cash', 'urgent' => 'Urgent'])
+                                ->required(),
+                        ]),
+                        Forms\Components\Textarea::make('notes')->label('Catatan')->rows(3)->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -326,65 +394,60 @@ class PurchaseOrderResource extends Resource
                     ->date('d M Y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+
                 Tables\Columns\TextColumn::make('po_number')
                     ->label('Nomor FPPB')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('supplier.name')
-                ->label('Pemasok')
-                ->searchable(),
+
+                // KOLOM PEMASOK (List Multi-Supplier)
+                Tables\Columns\TextColumn::make('items_supplier')
+                    ->label('Pemasok')
+                    ->state(function (PurchaseOrder $record) {
+                        if (empty($record->items)) return '-';
+                        // Handle jika items masih dalam bentuk array atau string JSON (safety)
+                        $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+                        $ids = collect($items)->pluck('supplier_id')->filter()->unique();
+                        return Supplier::whereIn('id', $ids)->pluck('name')->join(', ');
+                    })
+                    ->wrap()
+                    ->limit(50),
+
+                // KOLOM NAMA BARANG (List)
                 Tables\Columns\TextColumn::make('items')
                     ->label('Nama Barang')
                     ->listWithLineBreaks()
                     ->limitList(3)
                     ->state(function (PurchaseOrder $record): array {
+                        if (empty($record->items)) return [];
+                        $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+                        $itemIds = collect($items)->pluck('supplier_item_id')->unique();
+                        $supplierItems = SupplierItem::whereIn('id', $itemIds)->get()->keyBy('id');
 
-                        if (empty($record->items)) {
-                            return [];
-                        }
-
-                        $items = collect($record->items);
-
-                        $itemIds = $items->pluck('supplier_item_id')->unique();
-
-                        $supplierItems = \App\Models\SupplierItem::whereIn('id', $itemIds)
-                            ->get()
-                            ->keyBy('id');
-
-                        return $items->map(function ($item) use ($supplierItems) {
+                        return collect($items)->map(function ($item) use ($supplierItems) {
                             $id = $item['supplier_item_id'];
-                            $quantity = $item['quantity'] ?? 0;
-                            $unit = $item['unit'] ?? 'pcs';
                             $name = $supplierItems->get($id)?->nama_item ?? 'Produk tidak ditemukan';
-                            return "{$name} ({$quantity} {$unit})";
+                            $qty = $item['quantity'] ?? 0;
+                            $unit = $item['unit'] ?? 'pcs';
+                            return "{$name} ({$qty} {$unit})";
                         })->all();
                     }),
 
+                // KOLOM HARGA SATUAN (List)
                 Tables\Columns\TextColumn::make('prices')
                     ->label('Harga Satuan')
                     ->listWithLineBreaks()
                     ->state(function (PurchaseOrder $record): array {
-                        if (empty($record->items)) {
-                            return [];
-                        }
-                        return collect($record->items)->map(function ($item) {
-                            $price = $item['price'] ?? 0;
-                            return 'Rp ' . number_format($price, 2, ',', '.');
-                        })->all();
+                        if (empty($record->items)) return [];
+                        $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+                        return collect($items)->map(fn ($item) => 'Rp ' . number_format($item['price'] ?? 0, 2, ',', '.'))->all();
                     }),
 
                 Tables\Columns\TextColumn::make('grand_total')
                     ->label('Total Pesanan')
-                    ->numeric(
-                        decimalPlaces: 2,
-                        decimalSeparator: ',',
-                        thousandsSeparator: '.'
-                    )
+                    ->numeric(decimalPlaces: 2, decimalSeparator: ',', thousandsSeparator: '.')
                     ->prefix('Rp ')
                     ->sortable()
-                    ->summarize(Sum::make()
-                        ->label('Total Pengeluaran')
-                        ->numeric(decimalPlaces: 2, decimalSeparator: ',', thousandsSeparator: '.')
-                        ->money('IDR')),
+                    ->summarize(Sum::make()->label('Total')->numeric(decimalPlaces: 2)->money('IDR')),
 
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
@@ -393,6 +456,8 @@ class PurchaseOrderResource extends Resource
                         'completed' => 'success',
                         default => 'gray'
                     }),
+
+                // KOLOM DURASI (FIXED ERROR)
                 Tables\Columns\TextColumn::make('duration')
                     ->label('Durasi')
                     ->badge()
@@ -406,167 +471,106 @@ class PurchaseOrderResource extends Resource
                         if ($record->status === 'completed') {
                             return "Tiba dalam {$state} hari";
                         }
-
                         if ($state > 14) {
                             return 'Terlambat (' . ($state - 14) . ' hari)';
                         }
-
                         return "Hari ke-{$state}";
                     })
                     ->color(function (int $state, PurchaseOrder $record): string {
                         if ($record->status === 'completed') {
                             return 'success';
                         }
-
                         if ($state > 14) {
                             return 'danger';
                         }
-
                         return 'info';
                     }),
             ])
             ->filters([
-                SelectFilter::make('status')
-                ->options([
-                    'ordered' => 'Ordered',
-                    'completed' => 'Completed',
-                ]),
+                SelectFilter::make('status')->options(['ordered' => 'Ordered', 'completed' => 'Completed']),
                 Filter::make('created_at')
                     ->form([
-                        DatePicker::make('created_from')
-                            ->label('Dari tanggal'),
-                        DatePicker::make('created_until')
-                            ->label('Sampai tanggal'),
+                        DatePicker::make('created_from')->label('Dari tanggal'),
+                        DatePicker::make('created_until')->label('Sampai tanggal'),
                     ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['created_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['created_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                            );
-                    })
-
+                    ->query(fn (Builder $query, array $data) => $query
+                        ->when($data['created_from'], fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
+                        ->when($data['created_until'], fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
+                    )
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                
                 Tables\Actions\Action::make('whatsapp')
-                    ->label('Hubungi Supplier')
-                    ->icon('heroicon-o-chat-bubble-left-right') 
+                    ->label('Hubungi')
+                    ->icon('heroicon-o-chat-bubble-left-right')
                     ->color('success')
-                    ->url(function (PurchaseOrder $record): string {
-                        $phone = $record->supplier->phone_number;
-
-                        if (str_starts_with($phone, '0')) {
-                            $phone = '62' . substr($phone, 1);
-                        }
-                        
-                        $poNumber = $record->po_number;
-                        $message = "Halo, kami dari PT MAKMUR ARTHA SEJAHTERA. Ingin menanyakan status pesanan dengan nomor PO: {$poNumber}. Terima kasih.";
-                        return 'https://wa.me/' . $phone . '?text=' . urlencode($message);
+                    ->form(function (PurchaseOrder $record) {
+                        $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+                        $ids = collect($items)->pluck('supplier_id')->unique();
+                        return [
+                            Forms\Components\Select::make('target_supplier_id')
+                                ->label('Pilih Supplier')
+                                ->options(Supplier::whereIn('id', $ids)->pluck('name', 'id'))
+                                ->required()
+                        ];
                     })
-                    ->openUrlInNewTab()
-                    ->visible(fn (PurchaseOrder $record): bool => isset($record->supplier->phone_number)), 
+                    ->action(function (array $data, PurchaseOrder $record) {
+                        $supplier = Supplier::find($data['target_supplier_id']);
+                        $phone = $supplier->phone_number;
+                        if (str_starts_with($phone, '0')) $phone = '62' . substr($phone, 1);
+                        return redirect()->to("https://wa.me/{$phone}?text=Halo, update PO {$record->po_number}?");
+                    }),
                 
                 Tables\Actions\Action::make('complete')
-                    ->label('Terima Barang')
+                    ->label('Terima')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
                     ->action(function (PurchaseOrder $record) {
                         DB::transaction(function () use ($record) {
-                            foreach ($record->items as $item) {
-                                $productId = $item['product_id'] ?? null;
-
-                                if (!$productId) {
-                                    continue;
-                                }
-
-                                $product = Product::find($productId);
+                            $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
+                            foreach ($items as $item) {
+                                $product = Product::find($item['product_id'] ?? null);
                                 if ($product) {
-                                    $qty = $item['quantity'] ?? 0;
-                                    $product->increment('stock', $qty);
-
-                                    StockMovement::create([
-                                        'product_id'     => $product->id,
-                                        'type'           => 'in',
-                                        'quantity'       => $qty,
-                                        'reference_type' => PurchaseOrder::class,
-                                        'reference_id'   => $record->id,
-                                    ]);
+                                    $product->increment('stock', $item['quantity']);
+                                    StockMovement::create(['product_id' => $product->id, 'type' => 'in', 'quantity' => $item['quantity'], 'reference_type' => PurchaseOrder::class, 'reference_id' => $record->id]);
                                 }
                             }
-
                             $record->update(['status' => 'completed']);
                         });
-
-                        Notification::make()
-                            ->title('Barang diterima, stok telah diupdate!')
-                            ->success()
-                            ->send();
+                        Notification::make()->title('Stok Updated')->success()->send();
                     })
-                    ->visible(fn(PurchaseOrder $record): bool => $record->status === 'ordered'),
-                
-                 Tables\Actions\Action::make('printFPPB')
-                ->label('Cetak FPPB')
-                ->icon('heroicon-o-document-text')
-                ->color('warning')
-                ->action(function (PurchaseOrder $record): StreamedResponse {
-                    $productIds = collect($record->items)->pluck('product_id')->unique()->filter()->toArray();
-                    $lastArrivalDates = [];
+                    ->visible(fn($record) => $record->status === 'ordered'),
 
-                    if (!empty($productIds)) {
-                        $latestMovements = StockMovement::query()
-                            ->select('product_id', DB::raw('MAX(created_at) as latest_arrival_date'))
-                            ->whereIn('product_id', $productIds)
-                            ->where('type', 'in')
-                            ->where('reference_type', PurchaseOrder::class)
-                            ->groupBy('product_id')
-                            ->pluck('latest_arrival_date', 'product_id'); 
-                        $lastArrivalDates = $latestMovements->map(function ($date) {
-                            return Carbon::parse($date)->format('d/m/Y');
-                        })->toArray();
-                    }
-
-                    $pdf = PDF::loadView('invoices.fppb', compact('record', 'lastArrivalDates')); 
-
-                    return response()->streamDownload(function () use ($pdf) {
-                        echo $pdf->output();
-                    }, 'FPPB-' . $record->po_number . '.pdf');
-                })
-                ->visible(true), 
+                // FIXED PDF ACTION SYNTAX
+                Tables\Actions\Action::make('printFPPB')
+                    ->label('FPPB')
+                    ->icon('heroicon-o-document-text')
+                    ->color('warning')
+                    ->action(function (PurchaseOrder $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            echo Pdf::loadView('invoices.fppb', compact('record'))->output();
+                        }, "FPPB-{$record->po_number}.pdf");
+                    }),
 
                 Tables\Actions\Action::make('printInvoice')
-                    ->label('Cetak Invoice')
+                    ->label('Invoice')
                     ->icon('heroicon-o-printer')
                     ->color('info')
-                    ->action(function (PurchaseOrder $record): StreamedResponse {
-                        $pdf = PDF::loadView('invoices.purchase_order', compact('record'));
-
-                        return response()->streamDownload(function () use ($pdf) {
-                            echo $pdf->output();
-                        }, 'invoice-' . $record->po_number . '.pdf');
+                    ->action(function (PurchaseOrder $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            echo Pdf::loadView('invoices.purchase_order', compact('record'))->output();
+                        }, "invoice-{$record->po_number}.pdf");
                     })
-                    ->visible(fn (PurchaseOrder $record): bool => $record->status === 'completed'),
+                    ->visible(fn ($record) => $record->status === 'completed'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+            ->bulkActions([Tables\Actions\BulkActionGroup::make([Tables\Actions\DeleteBulkAction::make()])]);
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
-    public static function getPages(): array
-    {
+    public static function getRelations(): array { return []; }
+    public static function getPages(): array {
         return [
             'index' => Pages\ListPurchaseOrders::route('/'),
             'create' => Pages\CreatePurchaseOrder::route('/create'),

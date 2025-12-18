@@ -51,11 +51,10 @@ class ItemsRelationManager extends RelationManager
                                     ->maxLength(255),
                                 
                                 
-                                Forms\Components\TextInput::make('sku')
+                              Forms\Components\TextInput::make('sku')
                                     ->label('Kode Barang (SKU)')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->unique(table: Product::class, column: 'sku'), 
+                                    ->required() // Wajib diisi manual
+                                    ->maxLength(255), 
 
                                 Forms\Components\TextInput::make('unit')
                                     ->label('Satuan (pcs, box, dll)')

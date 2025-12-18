@@ -59,9 +59,8 @@ class StockRequisitionResource extends Resource
                                 Forms\Components\Select::make('department')
                                     ->label('Bagian Pengambil')
                                     ->options([
-                                        'mekanik' => 'Mekanik',
-                                        'logistik' => 'Logistik',
                                         'engineering' => 'Engineering',
+                                        'logistik' => 'Logistik',
                                         'utility' => 'Utility',
                                         'workshop' => 'Workshop',
                                         'packing' => 'Packing',

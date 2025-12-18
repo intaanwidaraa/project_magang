@@ -33,9 +33,33 @@ class ProductResource extends Resource
                 Forms\Components\TextInput::make('sku')
                     ->label('Kode Barang')
                     ->unique(ignoreRecord: true)
-                    ->readOnly() 
-                    ->placeholder('Akan dibuat otomatis setelah disimpan') 
-                    ->maxLength(255),
+                    ->required()
+                    ->maxLength(8) 
+                    ->default(function () {
+                        $lastProduct = Product::where('sku', 'like', 'S%')->latest('id')->first();
+
+                        if (! $lastProduct) {
+                            return 'S0000001';
+                        }
+
+                        $lastSku = $lastProduct->sku;
+                        $number = (int) substr($lastSku, 1);
+                        $newNumber = $number + 1;
+                        return 'S' . str_pad($newNumber, 7, '0', STR_PAD_LEFT);
+                    })
+                    ->dehydrateStateUsing(fn (string $state): string => strtoupper($state)),
+                Forms\Components\Radio::make('is_stock')
+                    ->label('Kategori Penyimpanan')
+                    ->boolean()
+                    ->options([
+                        1 => 'Barang Stok (Inventory)',
+                        0 => 'Non-Stok (Langsung/Jasa)',
+                    ])
+                    ->default(true)
+                    ->inline()
+                    ->required()
+                    ->reactive() 
+                    ->columnSpanFull(),
                 Forms\Components\TextInput::make('stock')
                     ->label('Stok Saat Ini')
                     ->numeric()
@@ -86,12 +110,18 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama Produk')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('is_stock')
+                    ->label('Tipe')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state) => $state ? 'Stok' : 'Non-Stok')
+                    ->color(fn (bool $state) => $state ? 'info' : 'gray')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('information')
                     ->label('Informasi Mesin')
                     ->limit(40) 
                     ->searchable()
                     ->tooltip('Arahkan mouse untuk melihat info lengkap')
-                    ->toggleable(), 
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('unit')
                     ->label('Satuan'),
                 Tables\Columns\TextColumn::make('stock')
@@ -113,6 +143,12 @@ class ProductResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('is_stock')
+                ->label('Kategori Penyimpanan')
+                ->options([
+                    1 => 'Barang Stok',
+                    0 => 'Barang Non-Stok',
+                ]),
                 Tables\Filters\SelectFilter::make('is_consumable')
                 ->label('Tipe Barang')
                 ->options([
