@@ -68,9 +68,23 @@ class SupplierResource extends Resource
                                     ->maxLength(255),
                                 
                                 Forms\Components\TextInput::make('sku')
-                                    ->label('Kode Barang (SKU)')
-                                    ->required() 
-                                    ->maxLength(255),
+                                    ->label('Kode Barang')
+                                    ->unique(ignoreRecord: true)
+                                    ->required()
+                                    ->maxLength(8) 
+                                    ->default(function () {
+                                        $lastProduct = Product::where('sku', 'like', 'S%')->latest('id')->first();
+
+                                        if (! $lastProduct) {
+                                            return 'S0000001';
+                                        }
+
+                                        $lastSku = $lastProduct->sku;
+                                        $number = (int) substr($lastSku, 1);
+                                        $newNumber = $number + 1;
+                                        return 'S' . str_pad($newNumber, 7, '0', STR_PAD_LEFT);
+                                    })
+                                    ->dehydrateStateUsing(fn (string $state): string => strtoupper($state)),
 
                                 Forms\Components\Radio::make('is_stock')
                                     ->label('Tipe Barang')

@@ -37,7 +37,6 @@ class PurchaseOrderResource extends Resource
     {
         return $form
             ->schema([
-                // --- BAGIAN 1: INFORMASI PEMBELIAN ---
                 Forms\Components\Section::make('Informasi Pembelian')
                     ->schema([
                         Forms\Components\TextInput::make('po_number')
@@ -69,27 +68,23 @@ class PurchaseOrderResource extends Resource
                             ->required()
                             ->columnSpanFull(),
 
-                        // Hidden Field: Mengisi supplier_id utama agar tidak error database
                         Forms\Components\Hidden::make('supplier_id')
                             ->default(fn() => Supplier::first()?->id), 
 
                     ])->columns(2),
 
-                // --- BAGIAN 2: PILIH PRODUK (QUICK ADD MULTI-SUPPLIER) ---
                 Forms\Components\Section::make('Pilih Produk (Mode Cepat)')
                     ->description('Pilih supplier, lalu centang produk. Jika produk belum ada, klik tombol tambah di bawah list.')
                     ->schema([
                         
-                        // 1. Dropdown Filter Supplier (DENGAN FITUR CREATE NEW)
                         Forms\Components\Select::make('filter_supplier_id')
                             ->label('Pilih Supplier') 
                             ->options(Supplier::all()->pluck('name', 'id'))
                             ->searchable()
                             ->preload()
                             ->reactive()
-                            ->dehydrated(false) // Jangan simpan ke DB
+                            ->dehydrated(false) 
                             
-                            // --- FITUR CREATE SUPPLIER BARU ---
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')->label('Nama Supplier')->required(),
                                 Forms\Components\TextInput::make('phone_number')->label('Nomor Telepon')->required(),
@@ -98,14 +93,12 @@ class PurchaseOrderResource extends Resource
                             ->createOptionUsing(function (array $data) {
                                 return Supplier::create($data)->id;
                             })
-                            // ----------------------------------
 
                             ->afterStateUpdated(function (callable $set) {
                                 $set('temp_selected_products', []); 
                             })
                             ->columnSpanFull(),
 
-                        // 2. Daftar Produk (Checkbox)
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\CheckboxList::make('temp_selected_products')
@@ -126,7 +119,6 @@ class PurchaseOrderResource extends Resource
                                     ->reactive()
                                     ->dehydrated(false)
                                     ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                        // Logic Add to Repeater
                                         $currentSupplierId = $get('filter_supplier_id');
                                         if (!$currentSupplierId) return;
 
@@ -165,7 +157,6 @@ class PurchaseOrderResource extends Resource
                                 'style' => 'max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; padding: 1rem; border-radius: 0.5rem; background-color: #fff;', 
                             ]),
 
-                        // 3. ACTION TAMBAH PRODUK BARU (DISISIPKAN DI SINI)
                         Forms\Components\Actions::make([
                             Forms\Components\Actions\Action::make('addNewSupplierItem')
                                 ->label('(+) Tambah Produk Baru ke Supplier Ini')
@@ -205,7 +196,6 @@ class PurchaseOrderResource extends Resource
                                 ->action(function (array $data, callable $get, callable $set) {
                                     $currentSupplierId = $get('filter_supplier_id');
                                     
-                                    // 1. Buat Item Baru di Database
                                     $newItem = SupplierItem::create([
                                         'supplier_id' => $currentSupplierId,
                                         'product_id' => $data['product_id'],
@@ -213,7 +203,6 @@ class PurchaseOrderResource extends Resource
                                         'harga' => $data['harga'],
                                     ]);
 
-                                    // 2. Langsung Masukkan ke Repeater (Paling Atas)
                                     $currentRepeaterItems = collect($get('items') ?? []);
                                     $dbProduct = Product::find($data['product_id']);
 
@@ -235,7 +224,6 @@ class PurchaseOrderResource extends Resource
                                     
                                     if (count($finalItems) > 0) $set('supplier_id', $finalItems[0]['supplier_id']);
 
-                                    // 3. Update Checkbox
                                     $currentSelection = $get('temp_selected_products') ?? [];
                                     $currentSelection[] = $newItem->id;
                                     $set('temp_selected_products', $currentSelection);
@@ -245,7 +233,6 @@ class PurchaseOrderResource extends Resource
                         ])->alignEnd(),
                     ]),
 
-                // --- BAGIAN 3: TABEL RINCIAN ---
                 Forms\Components\Section::make('Rincian Pembelian Final')
                     ->schema([
                         Forms\Components\Repeater::make('items')
@@ -258,7 +245,6 @@ class PurchaseOrderResource extends Resource
                                     ->options(Supplier::all()->pluck('name', 'id'))
                                     ->required()
                                     ->reactive()
-                                    // Backup Create Option di repeater
                                     ->createOptionForm([
                                         Forms\Components\TextInput::make('name')->required(),
                                         Forms\Components\TextInput::make('phone_number')->required(),
@@ -368,8 +354,7 @@ class PurchaseOrderResource extends Resource
                             ->extraInputAttributes(['style' => 'font-size: 1.5rem; font-weight: bold; text-align: right;']),
                     ]),
 
-                // --- BAGIAN 4: FOOTER ---
-                Forms\Components\Section::make('Opsi & Keterangan')
+                    Forms\Components\Section::make('Opsi & Keterangan')
                     ->schema([
                         Forms\Components\Grid::make(2)->schema([
                             Forms\Components\Placeholder::make('estimated_arrival_info')
@@ -399,12 +384,10 @@ class PurchaseOrderResource extends Resource
                     ->label('Nomor FPPB')
                     ->searchable(),
 
-                // KOLOM PEMASOK (List Multi-Supplier)
                 Tables\Columns\TextColumn::make('items_supplier')
                     ->label('Pemasok')
                     ->state(function (PurchaseOrder $record) {
                         if (empty($record->items)) return '-';
-                        // Handle jika items masih dalam bentuk array atau string JSON (safety)
                         $items = is_string($record->items) ? json_decode($record->items, true) : $record->items;
                         $ids = collect($items)->pluck('supplier_id')->filter()->unique();
                         return Supplier::whereIn('id', $ids)->pluck('name')->join(', ');
@@ -412,7 +395,6 @@ class PurchaseOrderResource extends Resource
                     ->wrap()
                     ->limit(50),
 
-                // KOLOM NAMA BARANG (List)
                 Tables\Columns\TextColumn::make('items')
                     ->label('Nama Barang')
                     ->listWithLineBreaks()
@@ -432,7 +414,6 @@ class PurchaseOrderResource extends Resource
                         })->all();
                     }),
 
-                // KOLOM HARGA SATUAN (List)
                 Tables\Columns\TextColumn::make('prices')
                     ->label('Harga Satuan')
                     ->listWithLineBreaks()
@@ -457,7 +438,6 @@ class PurchaseOrderResource extends Resource
                         default => 'gray'
                     }),
 
-                // KOLOM DURASI (FIXED ERROR)
                 Tables\Columns\TextColumn::make('duration')
                     ->label('Durasi')
                     ->badge()
@@ -544,7 +524,6 @@ class PurchaseOrderResource extends Resource
                     })
                     ->visible(fn($record) => $record->status === 'ordered'),
 
-                // FIXED PDF ACTION SYNTAX
                 Tables\Actions\Action::make('printFPPB')
                     ->label('FPPB')
                     ->icon('heroicon-o-document-text')
